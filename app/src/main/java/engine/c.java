@@ -69,33 +69,34 @@ public final class c {
       Graphics var17 = var2;
       if (!e && i[0] != null && i[1] != null) {
          DirectGraphics var3 = DirectUtils.getDirectGraphics(var2);
+         javax.microedition.lcdui.Display.markWorld();
          engine.h.a(var2, 0);
+         int ex = engine.View.extra();
          int var4;
-         int var5 = (var4 = var0 / c) + 240 / c;
+         int var5 = (var4 = Math.floorDiv(var0 - ex, c)) + (240 + ex * 2) / c + 1;
          int var6;
          int var7 = (var6 = var19 / d) + 320 / d; // FIX: декомпилятор подставил var1 (=x) вместо var19 (=y)
          if (i[2] != null) {
             if (main.f.K == 0) {
                engine.h.a(var2, 12180445);
-               var2.drawImage(i[2], 0, 320 - i[2].getHeight(), 20);
-               var2.drawImage(i[2], i[2].getWidth(), 320 - i[2].getHeight(), 20);
-               var2.drawImage(i[2], i[2].getWidth() << 1, 320 - i[2].getHeight(), 20);
-               var2.drawImage(i[2], i[2].getWidth() * 3, 320 - i[2].getHeight(), 20);
+               int bh = 320 - i[2].getHeight(), bw = i[2].getWidth();
+               for (int bx = -((ex + bw - 1) / bw) * bw; bx < 240 + ex; bx += bw) {
+                  var2.drawImage(i[2], bx, bh, 20);
+               }
             } else {
                label85: {
                   if (main.f.K == 701) {
                      engine.h.a(var2, 7631791);
                   } else if (main.f.K == 702) {
                      engine.h.a(var2, 0);
-                     var2.drawImage(i[2], 0, 0, 20);
-                     var2.drawImage(i[2], 0, 52, 20);
-                     var2.drawImage(i[2], 0, 104, 20);
-                     var2.drawImage(i[2], 0, 156, 20);
+                     for (int by = 0; by <= 156; by += 52) {
+                        backdrop(var2, var3, 0, by);
+                     }
                      engine.h.b();
                      break label85;
                   }
 
-                  var2.drawImage(i[2], 0, 0, 20);
+                  backdrop(var2, var3, 0, 0);
                }
             }
          }
@@ -103,7 +104,13 @@ public final class c {
          for (int var20 = var6; var20 <= var7; var20++) {
             for (int var8 = var4; var8 <= var5; var8++) {
                int var9;
-               if ((var9 = var8 >= 0 && var8 < a && var20 >= 0 && var20 < b ? var20 * a + var8 << 1 : -1) != -1) {
+               // за краем карты столбцы тайлов отражаются зеркально (тайлы переворачиваются по горизонтали)
+               boolean mir = var8 < 0 || var8 >= a;
+               int colc = var8 < 0 ? -var8 - 1 : (var8 >= a ? 2 * a - var8 - 1 : var8);
+               if (colc < 0 || colc >= a) {
+                  continue;
+               }
+               if ((var9 = colc >= 0 && var20 >= 0 && var20 < b ? var20 * a + colc << 1 : -1) != -1) {
                   int var10 = var8 * c - var1;
                   int var11 = var20 * d - var19;
                   var17.setClip(var10, var11, c, d);
@@ -115,7 +122,8 @@ public final class c {
                      }
 
                      byte var14;
-                     if (f[var9 + var13 + 1] != -1 && (var14 = f[var9 + var13]) != -1) {
+                     if (f[var9 + var13 + 1] != -1 && f[var9 + var13] != -1) {
+                        var14 = mir ? (byte)(f[var9 + var13] ^ 64) : f[var9 + var13];
                         int var15 = var12 == 1 ? h[0] : h[1];
                         int var21;
                         int var16 = (var21 = (f[var9 + var13 + 1] & 255) + ((var14 & 1) << 8)) / var15 * d;
@@ -138,6 +146,28 @@ public final class c {
                   }
                }
             }
+         }
+      }
+   }
+
+   /** Рисует задник (240 px шириной) в точке (x,y) и достраивает его зеркальными копиями до краёв широкого кадра. */
+   private static void backdrop(Graphics g, DirectGraphics dg, int x, int y) {
+      int ex = engine.View.extra();
+      Image im = i[2];
+      int w = im.getWidth();
+      g.drawImage(im, x, y, 20);
+      for (int k = 1; k <= 5; k++) {
+         boolean right = x + k * w < 240 + ex;
+         boolean left = x - k * w + w > -ex;
+         if (!right && !left) {
+            break;
+         }
+         int flip = k % 2 == 1 ? 8192 : 0;
+         if (right) {
+            dg.drawImage(im, x + k * w, y, 20, flip);
+         }
+         if (left) {
+            dg.drawImage(im, x - k * w, y, 20, flip);
          }
       }
    }

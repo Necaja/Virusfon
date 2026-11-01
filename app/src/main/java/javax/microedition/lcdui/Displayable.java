@@ -2,7 +2,7 @@ package javax.microedition.lcdui;
 
 public abstract class Displayable {
    public int getWidth() {
-      return Display.WIDTH;
+      return Display.logicalWidth();
    }
 
    public int getHeight() {

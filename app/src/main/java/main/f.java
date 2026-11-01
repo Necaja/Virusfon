@@ -4500,10 +4500,12 @@ public final class f extends Canvas implements g, Runnable {
    private void H() {
       if (!engine.c.e) {
          if (main.a.c[c].a[3] || K != 701) {
+            g.translate(-engine.View.extra(), 0); // портрет и шкалы — у левого края широкого экрана
             engine.h.a(g, this.al, 0, 0);
             engine.h.a(g, 32, 21, 66 * main.e.M / main.e.h(), 5, 16375322, 16364836);
             engine.h.a(g, 32, 31, 52 * main.e.L / main.e.i(), 2, 33254, 5022438);
             engine.h.a(g, 32, 38, 37 * main.e.J / main.e.p(), 2, 11927296, 11927296);
+            g.translate(engine.View.extra(), 0);
             if (!L && k == 7 && !T && !M && !aQ) {
                main.e.j();
                engine.h.a(g, this.ao, 80, 299, 20, 20, 0, 11);
@@ -4553,15 +4555,12 @@ public final class f extends Canvas implements g, Runnable {
                   }
                }
 
-               engine.d.a(g, "Меню ", "Инфо ");
                if ((i & 65536) != 0 && main.e.M > 0) {
                   engine.d.a(false);
                   this.j();
                   k = 17;
                }
             }
-         } else if (!L && k == 7 && !T) {
-            engine.d.a(g, "Меню ", null);
          }
 
          for (int var2 = 0; var2 < bI.length; var2++) {

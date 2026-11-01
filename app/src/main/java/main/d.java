@@ -530,15 +530,15 @@ public final class d {
    }
 
    private static boolean b(d var0) {
-      return (var0.c >> 8) + var0.b[0] <= main.a.a + 240
-         && (var0.c >> 8) + var0.b[2] >= main.a.a
+      return (var0.c >> 8) + var0.b[0] <= main.a.a + engine.View.right()
+         && (var0.c >> 8) + var0.b[2] >= main.a.a - engine.View.extra()
          && (var0.d >> 8) + var0.b[1] <= main.a.b + 320
          && (var0.d >> 8) + var0.b[3] >= main.a.b;
    }
 
    private static boolean c(d var0) {
-      return (var0.c >> 8) + var0.b[0] <= main.a.a + 240 + 120
-         && (var0.c >> 8) + var0.b[2] >= main.a.a - 120
+      return (var0.c >> 8) + var0.b[0] <= main.a.a + engine.View.right() + 120
+         && (var0.c >> 8) + var0.b[2] >= main.a.a - engine.View.extra() - 120
          && (var0.d >> 8) + var0.b[1] <= main.a.b + 320 + 160
          && (var0.d >> 8) + var0.b[3] >= main.a.b - 160;
    }
@@ -1449,15 +1449,15 @@ public final class d {
                                     if (this.D[1] == 0) {
                                        int var20 = var17 % 2;
                                        main.a.c[this.J + var17].a[0] = var20 == 1;
-                                       main.a.c[this.J + var17].c = var20 == 1 ? main.a.a + (var17 << 4) << 8 : main.a.a + 240 - (var17 << 4) << 8;
+                                       main.a.c[this.J + var17].c = var20 == 1 ? main.a.a + (var17 << 4) << 8 : main.a.a + engine.View.right() - (var17 << 4) << 8;
                                     } else if (this.D[1] == 1) {
                                        main.a.c[this.J + var17].a[0] = false;
-                                       main.a.c[this.J + var17].c = main.a.a + 240 + (var17 << 3) << 8;
+                                       main.a.c[this.J + var17].c = main.a.a + engine.View.right() + (var17 << 3) << 8;
                                     }
 
                                     if (this.D[0] > 0) {
                                        main.a.c[this.J + var17].o = main.a.a << 8;
-                                       main.a.c[this.J + var17].p = main.a.a + 240 << 8;
+                                       main.a.c[this.J + var17].p = main.a.a + engine.View.right() << 8;
                                     }
                                  }
 
@@ -3432,7 +3432,7 @@ public final class d {
                      return;
                   }
 
-                  main.a.c[this.J + 1].c = main.a.a + 240 - 40 << 8;
+                  main.a.c[this.J + 1].c = main.a.a + engine.View.right() - 40 << 8;
                }
          }
       }
@@ -3662,7 +3662,7 @@ public final class d {
                   if (var1.a[0]) {
                      main.a.c[this.J + 6].c = main.a.a + 40 << 8;
                   } else {
-                     main.a.c[this.J + 6].c = main.a.a + 240 - 40 << 8;
+                     main.a.c[this.J + 6].c = main.a.a + engine.View.right() - 40 << 8;
                   }
 
                   main.a.d();
@@ -4264,7 +4264,7 @@ public final class d {
                   var1.a(main.e.I(this.A), var1.c < this.c, false);
                }
 
-               if ((this.c >> 8) + this.b[0] > main.a.a + 240 || (this.c >> 8) + this.b[2] < main.a.a || this.P == 3 || this.Q == 3) {
+               if ((this.c >> 8) + this.b[0] > main.a.a + engine.View.right() || (this.c >> 8) + this.b[2] < main.a.a - engine.View.extra() || this.P == 3 || this.Q == 3) {
                   this.a[3] = false;
                   return;
                }
@@ -4533,7 +4533,7 @@ public final class d {
                   var1.a(main.e.I(this.A), var1.c < this.c, false);
                }
 
-               if ((this.c >> 8) + this.b[0] > main.a.a + 240 || (this.c >> 8) + this.b[2] < main.a.a || this.P == 3 || this.Q == 3) {
+               if ((this.c >> 8) + this.b[0] > main.a.a + engine.View.right() || (this.c >> 8) + this.b[2] < main.a.a - engine.View.extra() || this.P == 3 || this.Q == 3) {
                   this.a[3] = false;
                   return;
                }
@@ -4785,7 +4785,7 @@ public final class d {
                   var1.a(main.e.I(this.A), var1.c < this.c, false);
                }
 
-               if ((this.c >> 8) + this.b[0] > main.a.a + 240 || (this.c >> 8) + this.b[2] < main.a.a || this.P == 3 || this.Q == 3) {
+               if ((this.c >> 8) + this.b[0] > main.a.a + engine.View.right() || (this.c >> 8) + this.b[2] < main.a.a - engine.View.extra() || this.P == 3 || this.Q == 3) {
                   this.a[3] = false;
                   return;
                }
@@ -5124,7 +5124,7 @@ public final class d {
                   var1.a(main.e.I(this.A), var1.c < this.c, false);
                }
 
-               if ((this.c >> 8) + this.b[0] > main.a.a + 240) {
+               if ((this.c >> 8) + this.b[0] > main.a.a + engine.View.right()) {
                   this.a[3] = false;
                   return;
                }
@@ -5452,7 +5452,7 @@ public final class d {
             case 9:
                if (this.v == 0) {
                   if (!this.a[0]) {
-                     main.a.c[this.J + 9].c = main.a.a + 240 - this.b[0] << 8;
+                     main.a.c[this.J + 9].c = main.a.a + engine.View.right() - this.b[0] << 8;
                   } else {
                      main.a.c[this.J + 9].c = main.a.a - this.b[2] << 8;
                   }
@@ -5476,7 +5476,7 @@ public final class d {
                   var1.a(main.e.I(this.A), var1.c < this.c, false);
                }
 
-               if ((this.c >> 8) + this.b[0] > main.a.a + 240 || (this.c >> 8) + this.b[2] < main.a.a) {
+               if ((this.c >> 8) + this.b[0] > main.a.a + engine.View.right() || (this.c >> 8) + this.b[2] < main.a.a - engine.View.extra()) {
                   this.v++;
                   if (this.v > 5) {
                      this.v = 0;
@@ -5487,7 +5487,7 @@ public final class d {
                   this.c(10, 1);
                   this.d = main.a.c[this.J - 9].d - ((engine.a.a(4) + 1) * 20 << 8);
                   if (!main.a.c[this.J - 9].a[0]) {
-                     this.c = main.a.a + 240 - this.b[0] << 8;
+                     this.c = main.a.a + engine.View.right() - this.b[0] << 8;
                      return;
                   }
 
@@ -5497,7 +5497,7 @@ public final class d {
             case 11:
                if (this.v == 0) {
                   main.a.c[this.J - 1].a[3] = true;
-                  main.a.c[this.J - 1].c = main.a.a + 240 << 8;
+                  main.a.c[this.J - 1].c = main.a.a + engine.View.right() << 8;
                   main.a.c[this.J - 1].b(false);
                   this.v = 1;
                   return;

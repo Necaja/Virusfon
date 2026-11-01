@@ -1,0 +1,1 @@
+package javax.microedition.media; public class Player { public void realize() throws MediaException {} public void prefetch() throws MediaException {} public void start() throws MediaException {} public void stop() throws MediaException {} public void deallocate(){} public void close(){} public void setLoopCount(int n){} }

@@ -14,20 +14,19 @@ import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Image;
 
 /**
- * Поверхность: кадр 240x320 сверху, поверх/под ним — отдельные круглые полупрозрачные сенсорные кнопки
- * в стиле мобильных экшенов (Dead Cells):
- *  слева — крестовина (влево/вправо/вверх/вниз), справа — большая кнопка АТАКА (fire, -5),
- *  рядом ПРЫЖОК (вверх, -1), над ними — быстрые слоты 1-5; сверху MENU/BACK и переключатель цифровой панели.
- * Мультитач, можно "съезжать" пальцем с одной кнопки на другую. Коды — как в J2ME (Nokia).
+ * Горизонтальный экран. Высота игры (320) растягивается на всю высоту экрана, а в стороны игра
+ * дорисовывает мир (см. engine.View / Display.setLogicalWidth). Поверх кадра — полупрозрачные
+ * сенсорные кнопки: слева ◄ ► ▲ ▼, справа большая АТАКА, ПРЫЖОК и навыки 1·3·7·9, сверху пауза.
+ * Мультитач; палец можно переводить с кнопки на кнопку. Коды — как в J2ME (Nokia).
  */
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Display.Surface {
    private static final class Btn {
       final String label;
-      final int code;      // J2ME key code; 0 = служебная кнопка (переключатель)
+      final int code;      // J2ME key code; 0 = служебная кнопка (переключатель цифровой панели)
       final boolean numpad; // видна только при включённой цифровой панели
-      final boolean slot;  // видна всегда в ряду слотов 1-5
+      final boolean slot;  // кнопка навыка
       float cx, cy, r;
-      boolean down, visible = true;
+      boolean down;
 
       Btn(String label, int code, boolean slot, boolean numpad) {
          this.label = label;
@@ -37,7 +36,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       }
 
       boolean hit(float x, float y) {
-         float dx = x - cx, dy = y - cy, rr = r * 1.18f; // чуть увеличенная зона касания
+         float dx = x - cx, dy = y - cy, rr = r * 1.15f; // чуть увеличенная зона касания
          return dx * dx + dy * dy <= rr * rr;
       }
    }
@@ -49,11 +48,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    private final Paint fillPaint = new Paint();
    private final Paint ringPaint = new Paint();
    private final Paint textPaint = new Paint();
-   private final Rect src = new Rect(0, 0, Display.WIDTH, Display.HEIGHT);
+   private final Rect src = new Rect();
    private final Rect dst = new Rect();
    private volatile boolean surfaceReady;
    private volatile boolean numpadOn;
-   private float baseR = 40f;
 
    public GameView(Context ctx) {
       super(ctx);
@@ -61,28 +59,27 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       setFocusable(true);
       setFocusableInTouchMode(true);
       framePaint.setFilterBitmap(false);
-      bgPaint.setColor(0xFF0B0B12);
+      bgPaint.setColor(0xFF000000);
       fillPaint.setAntiAlias(true);
       ringPaint.setAntiAlias(true);
       ringPaint.setStyle(Paint.Style.STROKE);
-      ringPaint.setStrokeWidth(4f);
       textPaint.setAntiAlias(true);
       textPaint.setTextAlign(Paint.Align.CENTER);
       textPaint.setFakeBoldText(true);
 
-      buttons.add(new Btn("◄", -3, false, false));   // 0
-      buttons.add(new Btn("►", -4, false, false));   // 1
-      buttons.add(new Btn("▲", -1, false, false));   // 2 (вверх / навигация по меню)
-      buttons.add(new Btn("▼", -2, false, false));   // 3
+      buttons.add(new Btn("◄", -3, false, false));    // 0 влево
+      buttons.add(new Btn("►", -4, false, false));    // 1 вправо
+      buttons.add(new Btn("▲", -1, false, false));    // 2 вверх (в игре — прыжок; в меню — вверх)
+      buttons.add(new Btn("▼", -2, false, false));    // 3 вниз
       buttons.add(new Btn("АТАКА", -5, false, false)); // 4 fire / OK
-      buttons.add(new Btn("ПРЫЖОК", -1, false, false)); // 5 тот же код, что и "вверх"
-      buttons.add(new Btn("MENU", -6, false, false)); // 6
-      buttons.add(new Btn("BACK", -7, false, false)); // 7
-      for (int i = 1; i <= 5; i++) {
-         buttons.add(new Btn(String.valueOf(i), 48 + i, true, false));
+      buttons.add(new Btn("ПРЫЖОК", -1, false, false)); // 5 тот же код, что и «вверх»
+      buttons.add(new Btn("❚❚", -7, false, false));   // 6 пауза / назад (правая софт-клавиша)
+      int[] sk = {1, 3, 7, 9};                         // 7..10 навыки (как на панели в игре)
+      for (int n : sk) {
+         buttons.add(new Btn(String.valueOf(n), 48 + n, true, false));
       }
-      String[] more = {"6", "7", "8", "9", "*", "0", "#"};
-      int[] codes = {54, 55, 56, 57, 42, 48, 35};
+      String[] more = {"0", "2", "4", "5", "6", "8", "*", "#"};
+      int[] codes = {48, 50, 52, 53, 54, 56, 42, 35};
       for (int i = 0; i < more.length; i++) {
          buttons.add(new Btn(more[i], codes[i], false, true));
       }
@@ -98,49 +95,44 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    @Override
    protected void onSizeChanged(int w, int h, int ow, int oh) {
       super.onSizeChanged(w, h, ow, oh);
-      // кадр: на всю ширину, но не выше 62% экрана; прижат к верху
-      float scale = Math.min(w / (float) Display.WIDTH, (h * 0.62f) / Display.HEIGHT);
-      int fw = Math.round(Display.WIDTH * scale), fh = Math.round(Display.HEIGHT * scale);
-      int fx = (w - fw) / 2;
-      dst.set(fx, 0, fx + fw, fh);
-
-      float aH = h - fh;
-      float r = Math.min(w * 0.10f, aH * 0.125f);
-      baseR = r;
-      float cy = fh + aH * 0.56f;
-
-      // крестовина слева
-      float dx = r * 2.5f, dcx = r * 0.4f + dx, dr = r * 0.95f;
-      place(buttons.get(0), dcx - dx * 0.62f + 0f, cy, dr);
-      place(buttons.get(1), dcx + dx * 0.62f + 0f, cy, dr);
-      place(buttons.get(2), dcx, cy - r * 1.95f, dr * 0.9f);
-      place(buttons.get(3), dcx, cy + r * 1.95f, dr * 0.9f);
-      // действия справа
-      place(buttons.get(4), w - r * 1.9f, cy + r * 0.5f, r * 1.3f);       // атака — самая большая
-      place(buttons.get(5), w - r * 4.6f, cy + r * 1.1f, r * 1.0f);       // прыжок
-      // служебные сверху (прижаты к низу кадра)
-      float sy = fh + r * 0.75f;
-      place(buttons.get(6), r * 1.1f, sy, r * 0.62f);
-      place(buttons.get(7), w - r * 1.1f, sy, r * 0.62f);
-      place(toggle, w / 2f, sy, r * 0.62f);
-      // слоты 1-5 над кнопкой атаки; числа 6-9,*,0,# — вторым рядом (по включению)
-      float sr = r * 0.5f, step = sr * 2.35f, rowY = cy - r * 2.9f;
-      float right = w - r * 0.7f;
-      int idx = 0;
-      for (Btn b : buttons) {
-         if (b.slot) {
-            place(b, right - sr - (4 - idx) * step, rowY, sr);
-            idx++;
-         }
+      if (w <= 0 || h <= 0) {
+         return;
       }
-      idx = 0;
+      // высота кадра = высота экрана; ширина кадра подбирается так, чтобы заполнить экран
+      float scale = h / (float) Display.HEIGHT;
+      Display.setLogicalWidth(Math.round(w / scale));
+      int fw = Math.round(Display.logicalWidth() * scale);
+      int fx = Math.max(0, (w - fw) / 2);
+      dst.set(fx, 0, fx + Math.min(fw, w), h);
+
+      float u = h / 10f; // базовая единица раскладки
+      // --- левый большой палец ---
+      place(buttons.get(0), 2.3f * u, h - 1.9f * u, 1.05f * u);
+      place(buttons.get(1), 4.7f * u, h - 1.9f * u, 1.05f * u);
+      place(buttons.get(2), 3.5f * u, h - 4.15f * u, 0.8f * u);
+      place(buttons.get(3), 6.6f * u, h - 1.2f * u, 0.55f * u);
+      // --- правый большой палец ---
+      place(buttons.get(4), w - 2.4f * u, h - 2.1f * u, 1.35f * u);
+      place(buttons.get(5), w - 5.7f * u, h - 1.5f * u, 0.95f * u);
+      // навыки дугой над атакой
+      float[][] arc = {{-6.4f, -3.9f}, {-4.9f, -5.2f}, {-2.9f, -5.7f}, {-1.1f, -4.9f}};
+      for (int i = 0; i < 4; i++) {
+         place(buttons.get(7 + i), w + arc[i][0] * u, h + arc[i][1] * u, 0.62f * u);
+      }
+      // пауза — вверху справа, переключатель цифровой панели — левее
+      place(buttons.get(6), w - 1.0f * u, 0.95f * u, 0.55f * u);
+      place(toggle, w - 2.5f * u, 0.95f * u, 0.5f * u);
+      // цифровая панель (по включению): две строки по центру внизу
+      int idx = 0;
+      float step = 1.25f * u;
       for (Btn b : buttons) {
          if (b.numpad) {
-            place(b, right - sr - (6 - idx) * step, rowY - step * 1.0f, sr);
+            int row = idx / 4, col = idx % 4;
+            place(b, w / 2f + (col - 1.5f) * step, h - (1.0f + row * 1.2f) * u, 0.5f * u);
             idx++;
          }
       }
-      textPaint.setTextSize(r * 0.5f);
+      ringPaint.setStrokeWidth(Math.max(2f, u * 0.045f));
    }
 
    private boolean visible(Btn b) {
@@ -162,6 +154,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          }
          c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
          Bitmap bm = frame.getBitmap();
+         src.set(0, 0, bm.getWidth(), bm.getHeight());
          c.drawBitmap(bm, src, dst, framePaint);
          java.util.List<String> errs = ErrLog.snapshot();
          if (!errs.isEmpty()) {

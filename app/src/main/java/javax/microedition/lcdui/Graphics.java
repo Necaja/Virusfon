@@ -18,6 +18,8 @@ public class Graphics {
    private int clipX, clipY, clipW, clipH;
    private int stroke = SOLID;
    private Font font = Font.getDefaultFont();
+   /** "Широкий" режим: игра верстает кадр 240x320 в центре; с каждого бока extra пикселей мира. */
+   private int extra;
 
    public Graphics(android.graphics.Canvas c, int w, int h) {
       this.c = c;
@@ -31,14 +33,25 @@ public class Graphics {
    }
 
    /** Сброс состояния перед каждым paint(): нулевой translate, клип = весь экран. */
+   /** Включить широкий режим (только для экранного Graphics): центральная область 240 сдвигается на extra. */
+   public void setWide(int extra) {
+      this.extra = extra;
+      reset();
+   }
+
    public void reset() {
-      tx = 0;
+      tx = extra;
       ty = 0;
-      clipX = 0;
+      clipX = -extra;
       clipY = 0;
       clipW = width;
       clipH = height;
       color = 0xFF000000;
+   }
+
+   /** Любой "на всю ширину исходного экрана" прямоугольник (x=0, w=240) в широком режиме растягивается на весь кадр. */
+   private boolean full(int x, int w) {
+      return extra > 0 && x == 0 && w == 240;
    }
 
    private void begin() {
@@ -97,6 +110,10 @@ public class Graphics {
    }
 
    public void setClip(int x, int y, int w, int h) {
+      if (full(x, w)) {
+         x = -tx; // на весь кадр, даже если игра сдвинула начало координат (translate)
+         w = width;
+      }
       clipX = x;
       clipY = y;
       clipW = Math.max(0, w);
@@ -104,6 +121,10 @@ public class Graphics {
    }
 
    public void clipRect(int x, int y, int w, int h) {
+      if (full(x, w)) {
+         x = -tx; // на весь кадр, даже если игра сдвинула начало координат (translate)
+         w = width;
+      }
       int x2 = Math.min(clipX + clipW, x + w);
       int y2 = Math.min(clipY + clipH, y + h);
       clipX = Math.max(clipX, x);
@@ -121,6 +142,10 @@ public class Graphics {
    public void fillRect(int x, int y, int w, int h) {
       if (w <= 0 || h <= 0) {
          return;
+      }
+      if (full(x, w)) {
+         x = -tx; // на весь кадр, даже если игра сдвинула начало координат (translate)
+         w = width;
       }
       begin();
       fill.setStyle(Paint.Style.FILL);
@@ -184,8 +209,41 @@ public class Graphics {
       if (w <= 0 || h <= 0) {
          return;
       }
+      if (extra > 0 && x == 0 && y == 0 && w == 240 && h == 320 && scanlength == 240
+            && rgb[offset] == rgb[offset + 240 * 320 - 1]) {
+         // однотонная полноэкранная заливка/затемнение (fade): растягиваем на весь широкий кадр
+         begin();
+         fill.setStyle(Paint.Style.FILL);
+         fill.setColor(processAlpha ? rgb[offset] : (0xFF000000 | rgb[offset]));
+         c.drawRect(0, ty, width, ty + height, fill);
+         end();
+         return;
+      }
       begin();
       c.drawBitmap(rgb, offset, scanlength, tx + x, ty + y, w, h, processAlpha, bmp);
+      end();
+   }
+
+   private final Paint smooth = new Paint();
+   private final android.graphics.Rect srcR = new android.graphics.Rect();
+   private final android.graphics.Rect dstR = new android.graphics.Rect();
+
+   /** Масштабирует изображение в прямоугольник (x,y,w,h) со сглаживанием (для размытия боковых полей). */
+   public void drawScaled(Image img, int x, int y, int w, int h) {
+      smooth.setFilterBitmap(true);
+      srcR.set(0, 0, img.getWidth(), img.getHeight());
+      dstR.set(tx + x, ty + y, tx + x + w, ty + y + h);
+      begin();
+      c.drawBitmap(img.bitmap, srcR, dstR, smooth);
+      end();
+   }
+
+   /** Заливка с альфа-каналом (argb), в отличие от setColor, который альфу отбрасывает. */
+   public void fillRectArgb(int x, int y, int w, int h, int argb) {
+      begin();
+      fill.setStyle(Paint.Style.FILL);
+      fill.setColor(argb);
+      c.drawRect(tx + x, ty + y, tx + x + w, ty + y + h, fill);
       end();
    }
 

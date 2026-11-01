@@ -286,12 +286,17 @@ public final class d {
    }
 
    public static void a(Graphics var0, String var1, String var2) {
+      int ex = engine.View.extra(); // подписи софт-клавиш — у краёв широкого экрана
       if (var1 != null) {
+         var0.translate(-ex, 0);
          b(var0, var1, 3, 320 - engine.g.b, 15597476, 6362880, 20);
+         var0.translate(ex, 0);
       }
 
       if (var2 != null) {
+         var0.translate(ex, 0);
          b(var0, var2, 240 - engine.g.a.stringWidth(var2) - 2, 320 - engine.g.b, 15597476, 6362880, 20);
+         var0.translate(-ex, 0);
       }
    }
 
