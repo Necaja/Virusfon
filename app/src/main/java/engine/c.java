@@ -73,7 +73,7 @@ public final class c {
          int var4;
          int var5 = (var4 = var0 / c) + 240 / c;
          int var6;
-         int var7 = (var6 = var1 / d) + 320 / d;
+         int var7 = (var6 = var19 / d) + 320 / d; // FIX: декомпилятор подставил var1 (=x) вместо var19 (=y)
          if (i[2] != null) {
             if (main.f.K == 0) {
                engine.h.a(var2, 12180445);
