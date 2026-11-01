@@ -52,7 +52,138 @@ public class Display {
       void present(Image frame);
    }
 
-   private static final Display INSTANCE = new Display();
+   // ---------- интерполяция кадров (логика игры ~20 кадров/с, показ ~60) ----------
+   /** Включить плавную дорисовку промежуточных кадров. */
+   public static volatile boolean interpolate = true;
+   private static final int MAXT = 1024;
+   private static final int[] tpx = new int[MAXT], tpy = new int[MAXT], tdx = new int[MAXT], tdy = new int[MAXT];
+   private static final int[] tseen = new int[MAXT];
+   private static int frameSeq = 1;
+   private static boolean anyDelta;
+   private static final Rec rec = new Rec();
+   private static volatile boolean replayable;
+   private static volatile boolean exactPending;
+   private static volatile long frameNs;
+   private static volatile long periodNs = 50000000L;
+   private static Image mid;
+   private static Graphics midG;
+   private static final Object presLock = new Object();
+
+   /**
+    * Пометить следующие команды рисования как группу, которая движется как одно целое (карта, персонаж).
+    * (x,y) — экранное положение группы в этом кадре; разность с прошлым кадром задаёт смещение для промежуточных кадров.
+    * id 0 — снять пометку. Вызывается из paint().
+    */
+   public static void tag(int id, int x, int y) {
+      Graphics g = backG;
+      if (g == null) {
+         return;
+      }
+      if (id <= 0 || id >= MAXT) {
+         g.recTag(0);
+         return;
+      }
+      if (tseen[id] != frameSeq) {
+         int dx = 0, dy = 0;
+         if (tseen[id] == frameSeq - 1) {
+            dx = x - tpx[id];
+            dy = y - tpy[id];
+            if (Math.abs(dx) > 48 || Math.abs(dy) > 48) {
+               dx = 0;
+               dy = 0;
+            }
+         }
+         tdx[id] = dx;
+         tdy[id] = dy;
+         tpx[id] = x;
+         tpy[id] = y;
+         tseen[id] = frameSeq;
+         if (dx != 0 || dy != 0) {
+            anyDelta = true;
+         }
+      }
+      g.recTag(id);
+   }
+
+   /** Промежуточный кадр между прошлым (alpha=0) и последним (alpha=1) логическим кадром. Для отладки/тестов. */
+   public static Image interpolated(float alpha) {
+      lock.lock();
+      try {
+         return interpolatedLocked(alpha);
+      } finally {
+         lock.unlock();
+      }
+   }
+
+   private static Image interpolatedLocked(float alpha) {
+      if (back == null) {
+         return null;
+      }
+      if (mid == null || mid.getWidth() != back.getWidth()) {
+         mid = Image.createImage(back.getWidth(), HEIGHT);
+         midG = mid.getGraphics();
+         midG.setWide(extra());
+      }
+      rec.replay(midG, tdx, tdy, alpha);
+      return mid;
+   }
+
+   private static void presenterLoop() {
+      while (true) {
+         try {
+            long t0 = System.nanoTime();
+            boolean busy = false;
+            lock.lock();
+            try {
+               Surface s = surface;
+               if (s != null && back != null) {
+                  float a = (float) ((t0 - frameNs) / (double) periodNs);
+                  if (interpolate && replayable && a < 1f) {
+                     Image m = interpolatedLocked(Math.max(0f, a));
+                     if (m != null) {
+                        s.present(m);
+                        busy = true;
+                     }
+                  } else if (exactPending) {
+                     exactPending = false;
+                     s.present(back);
+                  }
+               }
+            } finally {
+               lock.unlock();
+            }
+            if (busy) {
+               long left = 16600000L - (System.nanoTime() - t0);
+               if (left > 0) {
+                  Thread.sleep(left / 1000000L, (int) (left % 1000000L));
+               }
+            } else {
+               synchronized (presLock) {
+                  if (!exactPending) {
+                     presLock.wait(40);
+                  }
+               }
+            }
+         } catch (InterruptedException e) {
+            return;
+         } catch (Throwable e) {
+            e.printStackTrace();
+            try {
+               Thread.sleep(50);
+            } catch (InterruptedException ie) {
+               return;
+            }
+         }
+      }
+   }
+
+   private static void wakePresenter() {
+      exactPending = true;
+      synchronized (presLock) {
+         presLock.notifyAll();
+      }
+   }
+
    private static volatile Displayable current;
    private static volatile Surface surface;
    private static volatile boolean dirty;
@@ -60,6 +191,7 @@ public class Display {
    private static final Object pumpLock = new Object();
    private static Image back;
    private static Graphics backG;
+   private static final Display INSTANCE = new Display();
 
    private Display() {
       Thread t = new Thread(new Runnable() {
@@ -84,6 +216,13 @@ public class Display {
       }, "lcdui-repaint");
       t.setDaemon(true);
       t.start();
+      Thread pt = new Thread(new Runnable() {
+         public void run() {
+            presenterLoop();
+         }
+      }, "lcdui-present");
+      pt.setDaemon(true);
+      pt.start();
    }
 
    public static Display getDisplay(MIDlet m) {
@@ -154,18 +293,31 @@ public class Display {
          }
          backG.reset();
          worldFrame = false;
+         frameSeq++;
+         anyDelta = false;
+         rec.clear();
+         backG.setRec(rec);
          try {
             ((Canvas) d).hostPaint(backG);
+         } catch (Throwable e) {
+            e.printStackTrace();
+         }
+         backG.setRec(null);
+         try {
             if (!worldFrame && extra() > 0) {
                extendSides();
             }
          } catch (Throwable e) {
             e.printStackTrace();
          }
-         Surface s = surface;
-         if (s != null) {
-            s.present(back);
+         long now = System.nanoTime();
+         long dt = now - frameNs;
+         frameNs = now;
+         if (dt > 20000000L && dt < 250000000L) {
+            periodNs = Math.max(33000000L, Math.min(100000000L, (periodNs * 3 + dt) / 4));
          }
+         replayable = worldFrame && rec.tagged && !rec.overflow && anyDelta;
+         wakePresenter();
       } finally {
          lock.unlock();
       }
@@ -201,15 +353,8 @@ public class Display {
    /** Перерисовать последний кадр (например, после смены состояния кнопок оверлея). */
    public static void presentAgain() {
       // вызывается из UI-потока: НИКОГДА не ждём, пока игровой поток рисует/грузит уровень
-      if (lock.tryLock()) {
-         try {
-            Surface s = surface;
-            if (s != null && back != null) {
-               s.present(back);
-            }
-         } finally {
-            lock.unlock();
-         }
+      if (back != null) {
+         wakePresenter();
       }
    }
 }

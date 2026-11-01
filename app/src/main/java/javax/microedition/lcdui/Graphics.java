@@ -20,6 +20,24 @@ public class Graphics {
    private Font font = Font.getDefaultFont();
    /** "Широкий" режим: игра верстает кадр 240x320 в центре; с каждого бока extra пикселей мира. */
    private int extra;
+   /** Запись команд кадра (только для экранного Graphics), см. Rec. */
+   private Rec rec;
+
+   void setRec(Rec r) {
+      rec = r;
+   }
+
+   /** Сменить текущую группу интерполяции; клип фиксируется без сдвига, чтобы он не "утёк" между группами. */
+   void recTag(int id) {
+      if (rec != null && rec.tag != id) {
+         rec.tag = 0;
+         rec.add(5, clipX, clipY, clipW, clipH, 0, 0, null);
+         rec.tag = id;
+         if (id != 0) {
+            rec.tagged = true;
+         }
+      }
+   }
 
    public Graphics(android.graphics.Canvas c, int w, int h) {
       this.c = c;
@@ -65,10 +83,12 @@ public class Graphics {
 
    // ---------- состояние ----------
    public void setColor(int rgb) {
+      if (rec != null) rec.add(1, rgb & 0xFFFFFF, 0, 0, 0, 0, 0, null);
       color = 0xFF000000 | rgb;
    }
 
    public void setColor(int r, int g, int b) {
+      if (rec != null) rec.add(1, ((r & 255) << 16) | ((g & 255) << 8) | (b & 255), 0, 0, 0, 0, 0, null);
       color = 0xFF000000 | ((r & 255) << 16) | ((g & 255) << 8) | (b & 255);
    }
 
@@ -81,6 +101,7 @@ public class Graphics {
    }
 
    public void setFont(Font f) {
+      if (rec != null) rec.add(2, 0, 0, 0, 0, 0, 0, f == null ? Font.getDefaultFont() : f);
       font = f == null ? Font.getDefaultFont() : f;
    }
 
@@ -89,6 +110,7 @@ public class Graphics {
    }
 
    public void setStrokeStyle(int s) {
+      if (rec != null) rec.add(3, s, 0, 0, 0, 0, 0, null);
       stroke = s;
    }
 
@@ -97,6 +119,7 @@ public class Graphics {
    }
 
    public void translate(int x, int y) {
+      if (rec != null) rec.add(4, x, y, 0, 0, 0, 0, null);
       tx += x;
       ty += y;
    }
@@ -110,6 +133,7 @@ public class Graphics {
    }
 
    public void setClip(int x, int y, int w, int h) {
+      if (rec != null) rec.add(5, x, y, w, h, 0, 0, null);
       if (full(x, w)) {
          x = -tx; // на весь кадр, даже если игра сдвинула начало координат (translate)
          w = width;
@@ -121,6 +145,7 @@ public class Graphics {
    }
 
    public void clipRect(int x, int y, int w, int h) {
+      if (rec != null) rec.add(6, x, y, w, h, 0, 0, null);
       if (full(x, w)) {
          x = -tx; // на весь кадр, даже если игра сдвинула начало координат (translate)
          w = width;
@@ -140,6 +165,7 @@ public class Graphics {
 
    // ---------- примитивы ----------
    public void fillRect(int x, int y, int w, int h) {
+      if (rec != null) rec.add(7, x, y, w, h, 0, 0, null);
       if (w <= 0 || h <= 0) {
          return;
       }
@@ -155,6 +181,7 @@ public class Graphics {
    }
 
    public void drawRect(int x, int y, int w, int h) {
+      if (rec != null) rec.add(8, x, y, w, h, 0, 0, null);
       if (w < 0 || h < 0) {
          return;
       }
@@ -166,6 +193,7 @@ public class Graphics {
    }
 
    public void drawLine(int x1, int y1, int x2, int y2) {
+      if (rec != null) rec.add(9, x1, y1, x2, y2, 0, 0, null);
       begin();
       fill.setStyle(Paint.Style.STROKE);
       fill.setColor(color);
@@ -174,6 +202,7 @@ public class Graphics {
    }
 
    public void fillArc(int x, int y, int w, int h, int startAngle, int arcAngle) {
+      if (rec != null) rec.add(10, x, y, w, h, startAngle, arcAngle, null);
       begin();
       fill.setStyle(Paint.Style.FILL);
       fill.setColor(color);
@@ -183,6 +212,7 @@ public class Graphics {
    }
 
    public void drawArc(int x, int y, int w, int h, int startAngle, int arcAngle) {
+      if (rec != null) rec.add(11, x, y, w, h, startAngle, arcAngle, null);
       begin();
       fill.setStyle(Paint.Style.STROKE);
       fill.setColor(color);
@@ -192,6 +222,7 @@ public class Graphics {
    }
 
    public void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3) {
+      if (rec != null) rec.add(12, x1, y1, x2, y2, x3, y3, null);
       begin();
       android.graphics.Path p = new android.graphics.Path();
       p.moveTo(tx + x1, ty + y1);
@@ -208,6 +239,17 @@ public class Graphics {
    public void drawRGB(int[] rgb, int offset, int scanlength, int x, int y, int w, int h, boolean processAlpha) {
       if (w <= 0 || h <= 0) {
          return;
+      }
+      if (rec != null) {
+         if (w * h > 4096) {
+            rec.overflow = true; // большие заливки (fade) не интерполируем
+         } else {
+            int[] cp = new int[w * h];
+            for (int row = 0; row < h; row++) {
+               System.arraycopy(rgb, offset + row * scanlength, cp, row * w, w);
+            }
+            rec.add(13, x, y, w, h, processAlpha ? 1 : 0, 0, cp);
+         }
       }
       if (extra > 0 && x == 0 && y == 0 && w == 240 && h == 320 && scanlength == 240
             && rgb[offset] == rgb[offset + 240 * 320 - 1]) {
@@ -230,6 +272,7 @@ public class Graphics {
 
    /** Масштабирует изображение в прямоугольник (x,y,w,h) со сглаживанием (для размытия боковых полей). */
    public void drawScaled(Image img, int x, int y, int w, int h) {
+      if (rec != null) rec.add(14, x, y, w, h, 0, 0, img);
       smooth.setFilterBitmap(true);
       srcR.set(0, 0, img.getWidth(), img.getHeight());
       dstR.set(tx + x, ty + y, tx + x + w, ty + y + h);
@@ -240,6 +283,7 @@ public class Graphics {
 
    /** Заливка с альфа-каналом (argb), в отличие от setColor, который альфу отбрасывает. */
    public void fillRectArgb(int x, int y, int w, int h, int argb) {
+      if (rec != null) rec.add(15, x, y, w, h, argb, 0, null);
       begin();
       fill.setStyle(Paint.Style.FILL);
       fill.setColor(argb);
@@ -252,6 +296,11 @@ public class Graphics {
       if (img == null) {
          return;
       }
+      if (rec != null) rec.add(16, x, y, anchor, 0, 0, 0, img);
+      drawImage0(img, x, y, anchor);
+   }
+
+   private void drawImage0(Image img, int x, int y, int anchor) {
       int w = img.getWidth(), h = img.getHeight();
       if ((anchor & HCENTER) != 0) x -= w / 2; else if ((anchor & RIGHT) != 0) x -= w;
       if ((anchor & VCENTER) != 0) y -= h / 2; else if ((anchor & BOTTOM) != 0) y -= h;
@@ -267,8 +316,9 @@ public class Graphics {
       }
       boolean fh = (manip & 0x2000) != 0, fv = (manip & 0x4000) != 0;
       int rot = manip & 0x1FF;
+      if (rec != null) rec.add(17, x, y, anchor, manip, 0, 0, img);
       if (!fh && !fv && rot == 0) {
-         drawImage(img, x, y, anchor);
+         drawImage0(img, x, y, anchor);
          return;
       }
       int w = img.getWidth(), h = img.getHeight();
@@ -292,6 +342,7 @@ public class Graphics {
       if (s == null || s.length() == 0) {
          return;
       }
+      if (rec != null) rec.add(18, x, y, anchor, 0, 0, 0, s);
       Paint p = font.paint;
       Paint.FontMetrics fm = p.getFontMetrics();
       float w = p.measureText(s);

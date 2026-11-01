@@ -178,6 +178,7 @@ public final class a {
                   && (var3.h != 66 || var3.g != 8 && var3.g != 10)) {
                   int var4 = a;
                   int var5 = b;
+                  javax.microedition.lcdui.Display.tag(16 + var2, (var3.c >> 8) - var4, (var3.d >> 8) - var5);
                   var3.a(var4, var5);
                } else {
                   var0[var1] = var2;
@@ -191,10 +192,12 @@ public final class a {
             if (var0[var6] > 0 && (var7 = c[var0[var6]]) != null && var7.a[3]) {
                int var8 = a;
                int var9 = b;
+               javax.microedition.lcdui.Display.tag(16 + var0[var6], (var7.c >> 8) - var8, (var7.d >> 8) - var9);
                var7.a(var8, var9);
             }
          }
 
+         javax.microedition.lcdui.Display.tag(0, 0, 0);
          main.f.g.setClip(0, 0, 240, 320);
       }
    }

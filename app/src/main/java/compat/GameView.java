@@ -141,6 +141,68 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       return !b.numpad || numpadOn;
    }
 
+   // ---------------- сглаживающий апскейл (Scale2x/EPX + билинейный показ) ----------------
+   /** Выключить, если телефон не успевает: тогда кадр масштабируется "пиксель в пиксель". */
+   public static volatile boolean smoothScale = true;
+   private int[] pxIn, pxOut;
+   private Bitmap upBmp;
+   private float upMs;
+   private boolean filterOn;
+
+   private Bitmap upscale(Bitmap bm) {
+      if (!smoothScale) {
+         if (filterOn) {
+            framePaint.setFilterBitmap(false);
+            filterOn = false;
+         }
+         return bm;
+      }
+      long t = System.nanoTime();
+      int w = bm.getWidth(), h = bm.getHeight();
+      if (pxIn == null || pxIn.length != w * h) {
+         pxIn = new int[w * h];
+         pxOut = new int[w * h * 4];
+         upBmp = Bitmap.createBitmap(w * 2, h * 2, Bitmap.Config.ARGB_8888);
+      }
+      bm.getPixels(pxIn, 0, w, 0, 0, w, h);
+      scale2x(pxIn, pxOut, w, h);
+      upBmp.setPixels(pxOut, 0, w * 2, 0, 0, w * 2, h * 2);
+      if (!filterOn) {
+         framePaint.setFilterBitmap(true);
+         filterOn = true;
+      }
+      upMs = upMs * 0.9f + ((System.nanoTime() - t) / 1000000f) * 0.1f;
+      if (upMs > 16f) {
+         smoothScale = false; // слишком медленно для этого телефона — возвращаем быстрый режим
+      }
+      return upBmp;
+   }
+
+   /** Scale2x (EPX): углы и диагонали сглаживаются, плоские области и острые края сохраняются. */
+   static void scale2x(int[] s, int[] d, int w, int h) {
+      int w2 = w * 2;
+      for (int y = 0; y < h; y++) {
+         int row = y * w, up = (y > 0 ? y - 1 : y) * w, dn = (y < h - 1 ? y + 1 : y) * w;
+         int o0 = y * 2 * w2, o1 = o0 + w2;
+         for (int x = 0; x < w; x++) {
+            int p = s[row + x];
+            int a = s[up + x], b = s[row + (x < w - 1 ? x + 1 : x)], c = s[row + (x > 0 ? x - 1 : x)], e = s[dn + x];
+            int p0 = p, p1 = p, p2 = p, p3 = p;
+            if (a != e && c != b) {
+               if (c == a) p0 = a;
+               if (a == b) p1 = b;
+               if (e == c) p2 = c;
+               if (b == e) p3 = e;
+            }
+            int o = x * 2;
+            d[o0 + o] = p0;
+            d[o0 + o + 1] = p1;
+            d[o1 + o] = p2;
+            d[o1 + o + 1] = p3;
+         }
+      }
+   }
+
    // ---------------- Display.Surface ----------------
    @Override
    public void present(Image frame) {
@@ -155,7 +217,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
             return;
          }
          c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
-         Bitmap bm = frame.getBitmap();
+         Bitmap bm = upscale(frame.getBitmap());
          src.set(0, 0, bm.getWidth(), bm.getHeight());
          c.drawBitmap(bm, src, dst, framePaint);
          java.util.List<String> errs = ErrLog.snapshot();

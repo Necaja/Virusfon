@@ -101,8 +101,10 @@ public final class c {
             }
          }
 
-         for (int var20 = var6; var20 <= var7; var20++) {
-            for (int var8 = var4; var8 <= var5; var8++) {
+         // запас в 1 тайл со всех сторон: при интерполяции карта сдвигается на несколько пикселей назад
+         javax.microedition.lcdui.Display.tag(1, -var1, -var19);
+         for (int var20 = var6 - 1; var20 <= var7 + 1; var20++) {
+            for (int var8 = var4 - 1; var8 <= var5 + 1; var8++) {
                int var9;
                // за краем карты столбцы тайлов отражаются зеркально (тайлы переворачиваются по горизонтали)
                boolean mir = var8 < 0 || var8 >= a;
@@ -147,6 +149,7 @@ public final class c {
                }
             }
          }
+         javax.microedition.lcdui.Display.tag(0, 0, 0);
       }
    }
 
