@@ -48,6 +48,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    private final Paint fillPaint = new Paint();
    private final Paint ringPaint = new Paint();
    private final Paint textPaint = new Paint();
+   private final Paint sp = new Paint(), ep = new Paint();
    private final Rect src = new Rect();
    private final Rect dst = new Rect();
    private volatile boolean surfaceReady;
@@ -150,6 +151,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    private Bitmap upBmp;
    private float upMs;
    private boolean filterOn;
+   private boolean hwFailed;
 
    private Bitmap upscale(Bitmap bm) {
       if (!smoothScale) {
@@ -214,7 +216,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       SurfaceHolder holder = getHolder();
       Canvas c = null;
       try {
-         c = holder.lockCanvas();
+         // аппаратный Canvas: масштабирование большого кадра делает видеокарта (программный даёт ~10 показов/с)
+         if (!hwFailed && android.os.Build.VERSION.SDK_INT >= 26) {
+            try {
+               c = holder.lockHardwareCanvas();
+            } catch (RuntimeException e) {
+               hwFailed = true;
+            }
+         }
+         if (c == null) {
+            c = holder.lockCanvas();
+         }
          if (c == null) {
             return;
          }
@@ -223,7 +235,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          src.set(0, 0, bm.getWidth(), bm.getHeight());
          c.drawBitmap(bm, src, dst, framePaint);
          if (showStats) {
-            Paint sp = new Paint();
             sp.setTextSize(Math.max(20f, dst.width() / 48f));
             sp.setColor(0xCC000000);
             c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
@@ -232,7 +243,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          }
          java.util.List<String> errs = ErrLog.snapshot();
          if (!errs.isEmpty()) {
-            Paint ep = new Paint();
             ep.setTextSize(Math.max(22f, dst.width() / 36f));
             ep.setColor(0xCC000000);
             float lh = ep.getTextSize() * 1.15f;
