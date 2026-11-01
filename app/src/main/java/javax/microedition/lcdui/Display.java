@@ -183,6 +183,7 @@ public class Display {
             System.arraycopy(tdx, 0, pubDx, 0, MAXT);
             System.arraycopy(tdy, 0, pubDy, 0, MAXT);
          }
+         pubNs = System.nanoTime();
          pubSeq++;
       }
    }
@@ -199,6 +200,11 @@ public class Display {
 
    /** Под pubLock: забрать последний опубликованный кадр. */
    private static void syncPres() {
+      // Непрерывность движения: фаза нового интервала продолжает фазу старого (избыток/недобор переносится),
+      // иначе любая неточность оценки периода даёт рывок всего экрана раз в логический кадр.
+      double aOld = alphaBase + (pubNs - arrivalNs) / (double) periodNs;
+      alphaBase = (presReplayable && pubReplayable) ? Math.max(-0.5, Math.min(0.5, (aOld - 1.0) * 0.9)) : 0.0;
+      arrivalNs = pubNs;
       if (pubReplayable) {
          presRec.copyFrom(pubRec);
          System.arraycopy(pubDx, 0, presDx, 0, MAXT);
@@ -209,6 +215,8 @@ public class Display {
    }
 
    private static boolean presReplayable;
+   private static double alphaBase;
+   private static long arrivalNs, pubNs;
 
    private static Image replayMid(float alpha) {
       synchronized (midLock) {
@@ -242,9 +250,9 @@ public class Display {
                exact = pubBack;
             }
             if (s != null && exact != null) {
-               float a = (float) ((t0 - frameNs) / (double) periodNs);
-               if (interpolate && rep && a < 1f) {
-                  Image m = replayMid(Math.max(0f, a));
+               float a = (float) (alphaBase + (t0 - arrivalNs) / (double) periodNs);
+               if (interpolate && rep && a <= 1.5f) {
+                  Image m = replayMid(Math.max(-0.5f, a));
                   if (m != null) {
                      s.present(m);
                      statShown(true);
