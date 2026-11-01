@@ -136,7 +136,7 @@ public final class a {
       p = new int[d = var1 / 19];
       q = new int[d][];
       c = new d[d];
-      byte var3 = 0;
+      int var3 = 0;
 
       for (int var2 = 0; var2 < d; var2++) {
          p[var2] = var3;

@@ -4334,7 +4334,7 @@ public final class e {
 
    static void j() {
       if (main.f.c != 4) {
-         byte var0 = 20;
+         int var0 = 20;
          boolean var10000;
          if (++ag >= 20) {
             ag = 0;

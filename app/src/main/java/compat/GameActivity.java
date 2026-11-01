@@ -17,6 +17,7 @@ public class GameActivity extends Activity {
    protected void onCreate(Bundle b) {
       super.onCreate(b);
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+      ErrLog.install();
       Res.init(this);
       view = new GameView(this);
       setContentView(view);

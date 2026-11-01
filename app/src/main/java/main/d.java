@@ -210,7 +210,7 @@ public final class d {
             int var7 = var3.a.getWidth();
             int var8 = var3.a.getHeight();
 
-            for (byte var9 = 0; var9 < var25.length; var9 += 4) {
+            for (int var9 = 0; var9 < var25.length; var9 += 4) {
                int var10 = (var25[var9] & 255) << 2;
                int var11 = var25[var9 + 1] & 255;
                int var12 = var3.c[var10] & 255;
@@ -1470,7 +1470,7 @@ public final class d {
                                     main.a.a(-1, -1);
                                  }
 
-                                 for (byte var18 = 0; var18 < 4; var18 += 2) {
+                                 for (int var18 = 0; var18 < 4; var18 += 2) {
                                     if (this.E[var18] > 0) {
                                        main.a.c[this.E[var18]].a[3] = true;
                                        main.a.c[this.E[var18]].c(this.E[var18 + 1], 1);
@@ -2087,7 +2087,7 @@ public final class d {
 
          int var4 = ((this.d >> 8) + this.b[1] + 1) / engine.c.d;
          int var5 = ((this.d >> 8) + this.b[3]) / engine.c.d;
-         byte var6 = 0;
+         int var6 = 0;
 
          for (int var9 = var5; var9 >= var4; var9--) {
             if ((var6 = engine.c.a(var3, var9)) == 3) {
@@ -2140,7 +2140,7 @@ public final class d {
          }
 
          var5 /= engine.c.d;
-         byte var6 = 0;
+         int var6 = 0;
          if (this.f >= 0 && this.h < 5) {
             boolean var8 = this.a[0];
             int var9 = ((this.c >> 8) + this.b[2]) / engine.c.c;

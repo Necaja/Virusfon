@@ -1,6 +1,7 @@
 package compat;
 
 import android.content.Context;
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 
 /** Доступ к ресурсам игры (бывший Class.getResourceAsStream из JAR) — читает из assets/. */
@@ -25,7 +26,8 @@ public final class Res {
       }
       String p = path.startsWith("/") ? path.substring(1) : path;
       try {
-         return ctx.getAssets().open(p);
+         // буфер обязателен: игра читает данные побайтно, а AssetInputStream.read() — дорогой JNI-вызов
+         return new BufferedInputStream(ctx.getAssets().open(p), 32 * 1024);
       } catch (Exception e) {
          return null;
       }

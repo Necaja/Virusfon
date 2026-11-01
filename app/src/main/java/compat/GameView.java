@@ -163,6 +163,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
          Bitmap bm = frame.getBitmap();
          c.drawBitmap(bm, src, dst, framePaint);
+         java.util.List<String> errs = ErrLog.snapshot();
+         if (!errs.isEmpty()) {
+            Paint ep = new Paint();
+            ep.setTextSize(Math.max(22f, dst.width() / 36f));
+            ep.setColor(0xCC000000);
+            float lh = ep.getTextSize() * 1.15f;
+            c.drawRect(0, 0, c.getWidth(), lh * errs.size() + 8, ep);
+            ep.setColor(0xFFFF5555);
+            for (int i = 0; i < errs.size(); i++) {
+               c.drawText(errs.get(i), 6, lh * (i + 1), ep);
+            }
+         }
          for (Btn b : buttons) {
             if (!visible(b)) {
                continue;
@@ -248,7 +260,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
             }
          }
       }
-      Display.presentAgain();
       return true;
    }
 }

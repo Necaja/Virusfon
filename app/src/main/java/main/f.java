@@ -2402,7 +2402,7 @@ public final class f extends Canvas implements g, Runnable {
          var4.writeInt(main.e.q);
          var4.writeInt(main.e.r);
 
-         for (byte var11 = 0; var11 < main.e.D.length; var11 += 8) {
+         for (int var11 = 0; var11 < main.e.D.length; var11 += 8) {
             var4.writeInt(main.e.D[var11]);
             var4.writeInt(main.e.D[var11 + 1]);
             var4.writeInt(main.e.D[var11 + 2]);
@@ -2498,7 +2498,7 @@ public final class f extends Canvas implements g, Runnable {
             main.e.q = var7.readInt();
             main.e.r = var7.readInt();
 
-            for (byte var11 = 0; var11 < main.e.D.length; var11 += 8) {
+            for (int var11 = 0; var11 < main.e.D.length; var11 += 8) {
                main.e.D[var11] = var7.readInt();
                main.e.D[var11 + 1] = var7.readInt();
                main.e.D[var11 + 2] = var7.readInt();
@@ -2570,7 +2570,7 @@ public final class f extends Canvas implements g, Runnable {
    private int n() {
       try {
          InputStream var11;
-         int var1 = engine.e.a(var11 = compat.Res.open("/main.a.bin"));
+         int var1 = engine.e.a(var11 = compat.Res.open("/a.bin"));
          int var2 = 2;
          main.a.e = new c[var1];
 

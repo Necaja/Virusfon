@@ -108,7 +108,7 @@ public final class c {
                   int var11 = var20 * d - var19;
                   var17.setClip(var10, var11, c, d);
 
-                  for (byte var12 = 0; var12 <= 1; var12++) {
+                  for (int var12 = 0; var12 <= 1; var12++) {
                      int var13 = 0;
                      if (var12 < 1) {
                         var13 = g;
@@ -143,7 +143,7 @@ public final class c {
    }
 
    private static int a(int var0, int var1, int var2) {
-      short var3 = 0;
+      int var3 = 0;
       if ((var0 & 64) != 0) {
          if ((var0 & 128) != 0) {
             var3 = 180;

@@ -1,5 +1,6 @@
 package javax.microedition.lcdui;
 
+import java.util.concurrent.locks.ReentrantLock;
 import javax.microedition.midlet.MIDlet;
 
 /**
@@ -20,7 +21,7 @@ public class Display {
    private static volatile Displayable current;
    private static volatile Surface surface;
    private static volatile boolean dirty;
-   private static final Object lock = new Object();
+   private static final ReentrantLock lock = new ReentrantLock();
    private static final Object pumpLock = new Object();
    private static Image back;
    private static Graphics backG;
@@ -105,7 +106,8 @@ public class Display {
       if (!(d instanceof Canvas)) {
          return;
       }
-      synchronized (lock) {
+      lock.lock();
+      try {
          if (!dirty) {
             return;
          }
@@ -124,15 +126,22 @@ public class Display {
          if (s != null) {
             s.present(back);
          }
+      } finally {
+         lock.unlock();
       }
    }
 
    /** Перерисовать последний кадр (например, после смены состояния кнопок оверлея). */
    public static void presentAgain() {
-      synchronized (lock) {
-         Surface s = surface;
-         if (s != null && back != null) {
-            s.present(back);
+      // вызывается из UI-потока: НИКОГДА не ждём, пока игровой поток рисует/грузит уровень
+      if (lock.tryLock()) {
+         try {
+            Surface s = surface;
+            if (s != null && back != null) {
+               s.present(back);
+            }
+         } finally {
+            lock.unlock();
          }
       }
    }
