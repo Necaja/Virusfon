@@ -536,6 +536,15 @@ public final class d {
          && (var0.d >> 8) + var0.b[3] >= main.a.b;
    }
 
+   // Проверка "в кадре" по ОРИГИНАЛЬНЫМ 240 px: для сюжетных условий ("персонаж ушёл за экран"),
+   // иначе в широком режиме они могут никогда не выполниться (карта уже кадра).
+   private static boolean s(d var0) {
+      return (var0.c >> 8) + var0.b[0] <= main.a.a + 240
+         && (var0.c >> 8) + var0.b[2] >= main.a.a
+         && (var0.d >> 8) + var0.b[1] <= main.a.b + 320
+         && (var0.d >> 8) + var0.b[3] >= main.a.b;
+   }
+
    private static boolean c(d var0) {
       return (var0.c >> 8) + var0.b[0] <= main.a.a + engine.View.right() + 120
          && (var0.c >> 8) + var0.b[2] >= main.a.a - engine.View.extra() - 120
@@ -3048,7 +3057,7 @@ public final class d {
                      main.f.a(-1, -1);
                   }
 
-                  if (!b(this)) {
+                  if (!s(this)) {
                      this.a[3] = false;
                      var1.b(true);
                      main.f.b(43, 0);
@@ -5527,7 +5536,7 @@ public final class d {
                   main.f.b(69, 0);
                }
 
-               if (!b(var1)) {
+               if (!s(var1)) {
                   main.a.c[this.J - 2].c(2, 1);
                   main.f.b(70, 0);
                }
@@ -5851,7 +5860,7 @@ public final class d {
                      main.f.b(3, 0);
                      return;
                   }
-               } else if (!b(this)) {
+               } else if (!s(this)) {
                   this.I = 1;
                   main.f.b(2, 0);
                   return;

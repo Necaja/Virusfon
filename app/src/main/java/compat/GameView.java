@@ -73,7 +73,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       buttons.add(new Btn("▼", -2, false, false));    // 3 вниз
       buttons.add(new Btn("АТАКА", -5, false, false)); // 4 fire / OK
       buttons.add(new Btn("ПРЫЖОК", -1, false, false)); // 5 тот же код, что и «вверх»
-      buttons.add(new Btn("❚❚", -7, false, false));   // 6 пауза / назад (правая софт-клавиша)
+      buttons.add(new Btn("❚❚", -6, false, false));   // 6 пауза (левая софт-клавиша: «Меню» в игре)
       int[] sk = {1, 3, 7, 9};                         // 7..10 навыки (как на панели в игре)
       for (int n : sk) {
          buttons.add(new Btn(String.valueOf(n), 48 + n, true, false));
@@ -83,6 +83,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       for (int i = 0; i < more.length; i++) {
          buttons.add(new Btn(more[i], codes[i], false, true));
       }
+      buttons.add(new Btn("ИНФО", -7, false, false)); // правая софт-клавиша: «Инфо» / назад
       buttons.add(toggle);
    }
 
@@ -121,7 +122,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       }
       // пауза — вверху справа, переключатель цифровой панели — левее
       place(buttons.get(6), w - 1.0f * u, 0.95f * u, 0.55f * u);
-      place(toggle, w - 2.5f * u, 0.95f * u, 0.5f * u);
+      place(buttons.get(buttons.size() - 2), w - 2.45f * u, 0.95f * u, 0.55f * u);
+      place(toggle, w - 3.9f * u, 0.95f * u, 0.5f * u);
       // цифровая панель (по включению): две строки по центру внизу
       int idx = 0;
       float step = 1.25f * u;
