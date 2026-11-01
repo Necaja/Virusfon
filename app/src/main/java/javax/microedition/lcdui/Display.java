@@ -105,27 +105,73 @@ public class Display {
       g.recTag(id);
    }
 
-   /** Промежуточный кадр между прошлым (alpha=0) и последним (alpha=1) логическим кадром. Для отладки/тестов. */
-   public static Image interpolated(float alpha) {
-      lock.lock();
-      try {
-         return interpolatedLocked(alpha);
-      } finally {
-         lock.unlock();
+   // ----- опубликованный кадр: копия для потока показа, чтобы он никогда не задерживал игровой поток -----
+   private static final Object pubLock = new Object();
+   private static final Rec pubRec = new Rec(), presRec = new Rec();
+   private static final int[] pubDx = new int[MAXT], pubDy = new int[MAXT], presDx = new int[MAXT], presDy = new int[MAXT];
+   private static Image pubBack;
+   private static Graphics pubG;
+   private static boolean pubReplayable;
+   private static int pubSeq, presSeq;
+   private static final Object midLock = new Object();
+
+   /** Вызывается под lock в конце кадра: копирует результат для потока показа. */
+   private static void publish() {
+      synchronized (pubLock) {
+         if (pubBack == null || pubBack.getWidth() != back.getWidth()) {
+            pubBack = Image.createImage(back.getWidth(), HEIGHT);
+            pubG = pubBack.getGraphics();
+            pubG.setWide(extra());
+         }
+         pubG.reset();
+         pubG.drawImage(back, -extra(), 0, Graphics.TOP | Graphics.LEFT);
+         pubReplayable = replayable;
+         if (replayable) {
+            pubRec.copyFrom(rec);
+            System.arraycopy(tdx, 0, pubDx, 0, MAXT);
+            System.arraycopy(tdy, 0, pubDy, 0, MAXT);
+         }
+         pubSeq++;
       }
    }
 
-   private static Image interpolatedLocked(float alpha) {
-      if (back == null) {
-         return null;
+   /** Промежуточный кадр между прошлым (alpha=0) и последним (alpha=1) логическим кадром. Для отладки/тестов. */
+   public static Image interpolated(float alpha) {
+      synchronized (pubLock) {
+         if (pubSeq != presSeq) {
+            syncPres();
+         }
       }
-      if (mid == null || mid.getWidth() != back.getWidth()) {
-         mid = Image.createImage(back.getWidth(), HEIGHT);
-         midG = mid.getGraphics();
-         midG.setWide(extra());
+      return replayMid(alpha);
+   }
+
+   /** Под pubLock: забрать последний опубликованный кадр. */
+   private static void syncPres() {
+      if (pubReplayable) {
+         presRec.copyFrom(pubRec);
+         System.arraycopy(pubDx, 0, presDx, 0, MAXT);
+         System.arraycopy(pubDy, 0, presDy, 0, MAXT);
       }
-      rec.replay(midG, tdx, tdy, alpha);
-      return mid;
+      presReplayable = pubReplayable;
+      presSeq = pubSeq;
+   }
+
+   private static boolean presReplayable;
+
+   private static Image replayMid(float alpha) {
+      synchronized (midLock) {
+         Image pb = pubBack;
+         if (pb == null || !presReplayable) {
+            return null;
+         }
+         if (mid == null || mid.getWidth() != pb.getWidth()) {
+            mid = Image.createImage(pb.getWidth(), HEIGHT);
+            midG = mid.getGraphics();
+            midG.setWide((pb.getWidth() - WIDTH) / 2);
+         }
+         presRec.replay(midG, presDx, presDy, alpha);
+         return mid;
+      }
    }
 
    private static void presenterLoop() {
@@ -133,24 +179,28 @@ public class Display {
          try {
             long t0 = System.nanoTime();
             boolean busy = false;
-            lock.lock();
-            try {
-               Surface s = surface;
-               if (s != null && back != null) {
-                  float a = (float) ((t0 - frameNs) / (double) periodNs);
-                  if (interpolate && replayable && a < 1f) {
-                     Image m = interpolatedLocked(Math.max(0f, a));
-                     if (m != null) {
-                        s.present(m);
-                        busy = true;
-                     }
-                  } else if (exactPending) {
-                     exactPending = false;
-                     s.present(back);
-                  }
+            Surface s = surface;
+            Image exact = null;
+            boolean rep;
+            synchronized (pubLock) {
+               if (pubSeq != presSeq) {
+                  syncPres();
                }
-            } finally {
-               lock.unlock();
+               rep = presReplayable;
+               exact = pubBack;
+            }
+            if (s != null && exact != null) {
+               float a = (float) ((t0 - frameNs) / (double) periodNs);
+               if (interpolate && rep && a < 1f) {
+                  Image m = replayMid(Math.max(0f, a));
+                  if (m != null) {
+                     s.present(m);
+                     busy = true;
+                  }
+               } else if (exactPending) {
+                  exactPending = false;
+                  s.present(exact);
+               }
             }
             if (busy) {
                long left = 16600000L - (System.nanoTime() - t0);
@@ -222,6 +272,7 @@ public class Display {
          }
       }, "lcdui-present");
       pt.setDaemon(true);
+      pt.setPriority(Thread.NORM_PRIORITY - 1);
       pt.start();
    }
 
@@ -317,6 +368,7 @@ public class Display {
             periodNs = Math.max(33000000L, Math.min(100000000L, (periodNs * 3 + dt) / 4));
          }
          replayable = worldFrame && rec.tagged && !rec.overflow && anyDelta;
+         publish();
          wakePresenter();
       } finally {
          lock.unlock();

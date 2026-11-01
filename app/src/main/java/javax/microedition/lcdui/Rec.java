@@ -19,6 +19,15 @@ final class Rec {
       tagged = false;
    }
 
+   void copyFrom(Rec o) {
+      n = o.n;
+      tag = o.tag;
+      overflow = o.overflow;
+      tagged = o.tagged;
+      System.arraycopy(o.o, 0, this.o, 0, n * S);
+      System.arraycopy(o.r, 0, this.r, 0, n);
+   }
+
    void add(int op, int a, int b, int c, int d, int e, int f, Object ref) {
       if (n >= CAP) {
          overflow = true;
