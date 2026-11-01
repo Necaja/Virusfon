@@ -144,6 +144,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    // ---------------- сглаживающий апскейл (Scale2x/EPX + билинейный показ) ----------------
    /** Выключить, если телефон не успевает: тогда кадр масштабируется "пиксель в пиксель". */
    public static volatile boolean smoothScale = true;
+   /** Строка диагностики внизу экрана (шаги логики/с, показ/с и т.д.). */
+   public static volatile boolean showStats = true;
    private int[] pxIn, pxOut;
    private Bitmap upBmp;
    private float upMs;
@@ -220,6 +222,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          Bitmap bm = upscale(frame.getBitmap());
          src.set(0, 0, bm.getWidth(), bm.getHeight());
          c.drawBitmap(bm, src, dst, framePaint);
+         if (showStats) {
+            Paint sp = new Paint();
+            sp.setTextSize(Math.max(20f, dst.width() / 48f));
+            sp.setColor(0xCC000000);
+            c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
+            sp.setColor(0xFF66FF66);
+            c.drawText(Display.stats() + (smoothScale ? "  ап2x " + Math.round(upMs) + "мс" : "  апскейл выкл"), 8, c.getHeight() - sp.getTextSize() * 0.35f, sp);
+         }
          java.util.List<String> errs = ErrLog.snapshot();
          if (!errs.isEmpty()) {
             Paint ep = new Paint();
@@ -260,6 +270,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    @Override
    public void surfaceCreated(SurfaceHolder h) {
       surfaceReady = true;
+      final android.view.Choreographer ch = android.view.Choreographer.getInstance();
+      if (ch != null) {
+         ch.postFrameCallback(new android.view.Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long t) {
+               Display.vsync();
+               if (surfaceReady) {
+                  ch.postFrameCallback(this);
+               }
+            }
+         });
+      }
       Display.presentAgain();
    }
 

@@ -115,6 +115,58 @@ public class Display {
    private static int pubSeq, presSeq;
    private static final Object midLock = new Object();
 
+   // ----- диагностика и синхронизация с кадровой частотой экрана -----
+   private static final Object vsyncLock = new Object();
+   private static long vsyncSeq;
+   private static volatile boolean vsyncSeen;
+   private static int stTicks, stShown, stReplay, stExact;
+   private static long stPaintNs, stMaxGapNs, stLastShowNs, stWindowNs;
+   private static volatile String statsText = "";
+
+   /** Вызывается GameView по сигналу вертикальной синхронизации (Choreographer). */
+   public static void vsync() {
+      vsyncSeen = true;
+      synchronized (vsyncLock) {
+         vsyncSeq++;
+         vsyncLock.notifyAll();
+      }
+   }
+
+   /** Строка статистики: логических шагов/с, показанных кадров/с (из них интерполированных), время paint(), макс. пауза показа. */
+   public static String stats() {
+      return statsText;
+   }
+
+   private static synchronized void statShown(boolean replay) {
+      long now = System.nanoTime();
+      if (stLastShowNs != 0) {
+         stMaxGapNs = Math.max(stMaxGapNs, now - stLastShowNs);
+      }
+      stLastShowNs = now;
+      stShown++;
+      if (replay) {
+         stReplay++;
+      } else {
+         stExact++;
+      }
+      if (stWindowNs == 0) {
+         stWindowNs = now;
+      }
+      if (now - stWindowNs >= 1000000000L) {
+         double sec = (now - stWindowNs) / 1e9;
+         statsText = String.format("tick %.0f/с  показ %.0f/с (интерп %.0f)  paint %.0fмс  пауза<=%.0fмс",
+               stTicks / sec, stShown / sec, stReplay / sec, stTicks == 0 ? 0 : stPaintNs / 1e6 / stTicks, stMaxGapNs / 1e6);
+         stTicks = 0;
+         stShown = 0;
+         stReplay = 0;
+         stExact = 0;
+         stPaintNs = 0;
+         stMaxGapNs = 0;
+         stWindowNs = now;
+      }
+   }
+
+
    /** Вызывается под lock в конце кадра: копирует результат для потока показа. */
    private static void publish() {
       synchronized (pubLock) {
@@ -195,17 +247,34 @@ public class Display {
                   Image m = replayMid(Math.max(0f, a));
                   if (m != null) {
                      s.present(m);
+                     statShown(true);
                      busy = true;
                   }
                } else if (exactPending) {
                   exactPending = false;
                   s.present(exact);
+                  statShown(false);
                }
             }
             if (busy) {
-               long left = 16600000L - (System.nanoTime() - t0);
-               if (left > 0) {
-                  Thread.sleep(left / 1000000L, (int) (left % 1000000L));
+               if (vsyncSeen) {
+                  // ждём следующий сигнал экрана — кадры уходят ровно, без дрожи интервалов
+                  synchronized (vsyncLock) {
+                     long seq = vsyncSeq;
+                     long end = System.nanoTime() + 40000000L;
+                     while (vsyncSeq == seq) {
+                        long left = end - System.nanoTime();
+                        if (left <= 0) {
+                           break;
+                        }
+                        vsyncLock.wait(left / 1000000L, (int) (left % 1000000L));
+                     }
+                  }
+               } else {
+                  long left = 16600000L - (System.nanoTime() - t0);
+                  if (left > 0) {
+                     Thread.sleep(left / 1000000L, (int) (left % 1000000L));
+                  }
                }
             } else {
                synchronized (presLock) {
@@ -348,11 +417,14 @@ public class Display {
          anyDelta = false;
          rec.clear();
          backG.setRec(rec);
+         long pt0 = System.nanoTime();
          try {
             ((Canvas) d).hostPaint(backG);
          } catch (Throwable e) {
             e.printStackTrace();
          }
+         stPaintNs += System.nanoTime() - pt0;
+         stTicks++;
          backG.setRec(null);
          try {
             if (!worldFrame && extra() > 0) {
