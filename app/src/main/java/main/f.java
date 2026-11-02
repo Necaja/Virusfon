@@ -180,6 +180,8 @@ public final class f extends Canvas implements g, Runnable {
    private static int bS;
    private static String[] bT;
    private boolean bU;
+   private int fxK = -1;
+   private boolean fxBf;
    private int tipT;
    private String[] tipLines = new String[0];
    private int bV;
@@ -909,6 +911,7 @@ public final class f extends Canvas implements g, Runnable {
             ag = 0;
             g = null;
          } else {
+            this.fxWatch();
             label740:
             switch (k) {
                case 1:
@@ -4849,6 +4852,9 @@ public final class f extends Canvas implements g, Runnable {
             bR = 0;
             bQ = var0;
             L = true;
+            if (var1 == 1 || var1 == 2) {
+               engine.Fx.start(engine.Fx.BOOK, aN); // разговор с персонажем: задание
+            }
             engine.d.a(false);
             switch (bS) {
                case 0:
@@ -4862,6 +4868,23 @@ public final class f extends Canvas implements g, Runnable {
             }
          }
       }
+   }
+
+   /** Следит за переходами игры в окна и запускает эффект книги/свитка (см. engine.Fx). */
+   private void fxWatch() {
+      boolean bfNow = this.bf != null;
+      if (k != fxK) {
+         if (k == 9 && !bx && fxK != -1) {
+            engine.Fx.start(engine.Fx.SCROLL, aN);
+         } else if (k == 17 && fxK != -1) {
+            engine.Fx.start(engine.Fx.BOOK, aN);
+         }
+         fxK = k;
+      }
+      if (bfNow && !fxBf) {
+         engine.Fx.start(engine.Fx.BOOK, aN);
+      }
+      fxBf = bfNow;
    }
 
    /** Окно диалога вверху экрана: портрет говорящего слева, имя и текст справа. */

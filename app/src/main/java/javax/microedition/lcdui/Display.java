@@ -57,6 +57,8 @@ public class Display {
 
    /** Рисовать кадры на видеокарте прямо из записи команд (выставляет GameView, если телефон поддерживает). */
    public static volatile boolean gpu;
+   /** Идёт экранный эффект (книга/свиток): кадры нужно выводить непрерывно, по сигналу вертикальной синхронизации. */
+   public static volatile boolean animating;
    private static volatile boolean presFull, pubFull;
 
    /** Ширина (логическая) кадра, соответствующего последней опубликованной записи. */
@@ -275,6 +277,10 @@ public class Display {
          try {
             long t0 = System.nanoTime();
             boolean busy = false;
+            if (animating) {
+               exactPending = true;
+               busy = true;
+            }
             Surface s = surface;
             boolean gpuHandled = false;
             Image exact = null;

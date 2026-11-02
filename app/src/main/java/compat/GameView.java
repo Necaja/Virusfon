@@ -44,6 +44,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
 
    private final List<Btn> buttons = new ArrayList<Btn>();
    private final UiSkin skin = new UiSkin();
+   private final BookFx fx = new BookFx();
+   private boolean sfxInit;
    private final Paint bgPaint = new Paint();
    private final Paint framePaint = new Paint();
    private final Paint fillPaint = new Paint();
@@ -360,6 +362,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    }
 
    private void drawOverlay(Canvas c) {
+      Display.animating = fx.draw(c, c.getWidth(), c.getHeight(), dst);
       if (showStats) {
          sp.setTextSize(Math.max(20f, dst.width() / 48f));
          sp.setColor(0xCC000000);
@@ -424,6 +427,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    @Override
    public void surfaceCreated(SurfaceHolder h) {
       surfaceReady = true;
+      if (!sfxInit) {
+         sfxInit = true;
+         Sfx sfx = new Sfx();
+         sfx.init();
+         engine.Fx.sink = sfx;
+      }
       final android.view.Choreographer ch = android.view.Choreographer.getInstance();
       if (ch != null) {
          ch.postFrameCallback(new android.view.Choreographer.FrameCallback() {
