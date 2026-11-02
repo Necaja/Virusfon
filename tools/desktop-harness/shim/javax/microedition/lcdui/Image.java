@@ -8,5 +8,6 @@ public class Image { public final BufferedImage bi; boolean mutable;
   public static Image createImage(Image s){return new Image(s.bi,false);}
   public static Image createRGBImage(int[] rgb,int w,int h,boolean a){ BufferedImage b=new BufferedImage(w,h,BufferedImage.TYPE_INT_ARGB); b.setRGB(0,0,w,h,rgb,0,w); return new Image(b,false);}
   public Graphics getGraphics(){ return new Graphics(bi.createGraphics(), bi.getWidth(), bi.getHeight()); }
+  public void clear(){ java.awt.Graphics2D g=bi.createGraphics(); g.setComposite(java.awt.AlphaComposite.Clear); g.fillRect(0,0,bi.getWidth(),bi.getHeight()); g.dispose(); }
   public int getWidth(){return bi.getWidth();} public int getHeight(){return bi.getHeight();} public boolean isMutable(){return mutable;}
   public void getRGB(int[] r,int o,int s,int x,int y,int w,int h){ bi.getRGB(x,y,w,h,r,o,s);} }

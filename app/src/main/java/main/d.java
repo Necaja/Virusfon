@@ -529,6 +529,184 @@ public final class d {
       this.c(0, 1);
    }
 
+
+   // ---------- иконка атаки для сенсорной кнопки: меч со шлейфом в момент удара ----------
+   /** Готовая иконка (или null) и номер оружия, для которого она построена. */
+   static volatile javax.microedition.lcdui.Image uiIcon;
+   static volatile int uiIconFor = -2;
+
+   private static boolean uiBody(int tier, int rx, int ry, int rw, int rh) {
+      if (rw * rh < 70) {
+         return true;
+      }
+      if (tier == 0) {
+         return rx + rw <= 130 && ry + rh <= 95;
+      }
+      if (tier == 1) {
+         return rx + rw <= 100 && ry + rh <= 92 || ry >= 232;
+      }
+      return rx + rw <= 100 && ry + rh <= 92 || rx >= 198 && ry + rh <= 60 || ry >= 236 || rx >= 234;
+   }
+
+   /** Оставить в кадре только детали оружия и шлейфа (без тела героя). */
+   private static byte[] uiKeep(c sp, int tier, int q) {
+      byte[] src = sp.e[q];
+      byte[] out = new byte[src.length];
+      int n = 0;
+      for (int i = 0; i + 3 < src.length; i += 4) {
+         int ri = (src[i] & 255) << 2;
+         if (ri + 3 >= sp.c.length) {
+            continue;
+         }
+         int rw = sp.c[ri + 2] & 255, rh = sp.c[ri + 3] & 255;
+         if (uiBody(tier, sp.c[ri] & 255, sp.c[ri + 1] & 255, rw, rh)) {
+            continue;
+         }
+         int ox = src[i + 2], oy = src[i + 3];
+         if (rw * rh < 200 && Math.abs(ox) <= 16 && oy >= -34 && oy <= 4) {
+            continue; // мелкие остатки ног/рук у тела
+         }
+         System.arraycopy(src, i, out, n, 4);
+         n += 4;
+      }
+      byte[] r = new byte[n];
+      System.arraycopy(out, 0, r, 0, n);
+      return r;
+   }
+
+   private static int uiArea(c sp, byte[] fr) {
+      int a = 0;
+      for (int i = 0; i + 3 < fr.length; i += 4) {
+         int ri = (fr[i] & 255) << 2;
+         a += (sp.c[ri + 2] & 255) * (sp.c[ri + 3] & 255);
+      }
+      return a;
+   }
+
+   /** Строит иконку для текущего оружия: из его трёх ударных анимаций берётся кадр с самым большим следом. */
+   static void uiBuildWeaponIcon() {
+      int weapon = main.e.I;
+      if (uiIconFor == weapon) {
+         return;
+      }
+      int tier = Math.max(0, Math.min(2, weapon / 4));
+      c sp = main.a.e[tier + 1];
+      if (sp == null || sp.e == null || sp.a == null || sp.c == null || sp.f == null || sp.g == null) {
+         return; // спрайты оружия ещё не загружены — попробуем в следующем кадре
+      }
+      uiIconFor = weapon;
+      javax.microedition.lcdui.Graphics oldG = main.f.g;
+      com.nokia.mid.ui.DirectGraphics oldH = main.f.h;
+      try {
+         int base = weapon % 4 * 3, bestQ = -1, best = 0;
+         byte[] bestFrame = null;
+         for (int an = base; an < base + 3 && an < sp.g.length; an++) {
+            for (int st = 0; st < sp.g[an]; st++) {
+               int q = sp.f[an][st << 1];
+               if (q < 0 || q >= sp.e.length) {
+                  continue;
+               }
+               byte[] kept = uiKeep(sp, tier, q);
+               int area = uiArea(sp, kept);
+               if (area > best) {
+                  best = area;
+                  bestQ = q;
+                  bestFrame = kept;
+               }
+            }
+         }
+         if (bestFrame == null) {
+            return;
+         }
+         int size = 220;
+         javax.microedition.lcdui.Image im = javax.microedition.lcdui.Image.createImage(size, size);
+         im.clear();
+         javax.microedition.lcdui.Graphics g2 = im.getGraphics();
+         main.f.g = g2;
+         main.f.h = com.nokia.mid.ui.DirectUtils.getDirectGraphics(g2);
+         d tmp = new d();
+         tmp.n = new c();
+         tmp.m = sp;
+         tmp.q = bestQ;
+         tmp.c = size / 2 << 8;
+         tmp.d = size * 2 / 3 << 8;
+         tmp.a[3] = true;
+         byte[] orig = sp.e[bestQ];
+         sp.e[bestQ] = bestFrame;
+         try {
+            tmp.a(0, 0);
+         } finally {
+            sp.e[bestQ] = orig;
+         }
+         int[] px = new int[size * size];
+         im.getRGB(px, 0, size, 0, 0, size, size);
+         // убрать мелкие отдельные обрывки (остатки тела героя): оставляем куски не меньше 15% самого большого
+         int[] label = new int[size * size];
+         int[] stack = new int[size * size];
+         int[] sizes = new int[size * size / 2 + 2];
+         int labels = 0, biggest = 0;
+         for (int start = 0; start < size * size; start++) {
+            if (px[start] >>> 24 == 0 || label[start] != 0) {
+               continue;
+            }
+            labels++;
+            int sp2 = 0, count = 0;
+            stack[sp2++] = start;
+            label[start] = labels;
+            while (sp2 > 0) {
+               int cur = stack[--sp2];
+               count++;
+               int cx = cur % size, cy = cur / size;
+               for (int dy = -1; dy <= 1; dy++) {
+                  for (int dx = -1; dx <= 1; dx++) {
+                     int nx = cx + dx, ny = cy + dy;
+                     if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+                        int ni = ny * size + nx;
+                        if (label[ni] == 0 && px[ni] >>> 24 != 0) {
+                           label[ni] = labels;
+                           stack[sp2++] = ni;
+                        }
+                     }
+                  }
+               }
+            }
+            if (labels < sizes.length) {
+               sizes[labels] = count;
+            }
+            biggest = Math.max(biggest, count);
+         }
+         for (int i = 0; i < px.length; i++) {
+            if (label[i] != 0 && label[i] < sizes.length && sizes[label[i]] * 100 < biggest * 15) {
+               px[i] = 0;
+            }
+         }
+         int x0 = size, y0 = size, x1 = -1, y1 = -1;
+         for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+               if (px[y * size + x] >>> 24 != 0) {
+                  x0 = Math.min(x0, x);
+                  x1 = Math.max(x1, x);
+                  y0 = Math.min(y0, y);
+                  y1 = Math.max(y1, y);
+               }
+            }
+         }
+         if (x1 >= x0) {
+            int w = x1 - x0 + 1, h = y1 - y0 + 1;
+            int[] cut = new int[w * h];
+            for (int y = 0; y < h; y++) {
+               System.arraycopy(px, (y + y0) * size + x0, cut, y * w, w);
+            }
+            uiIcon = javax.microedition.lcdui.Image.createRGBImage(cut, w, h, true);
+         }
+      } catch (Throwable e) {
+         uiIcon = null;
+      } finally {
+         main.f.g = oldG;
+         main.f.h = oldH;
+      }
+   }
+
    private static boolean b(d var0) {
       return (var0.c >> 8) + var0.b[0] <= main.a.a + engine.View.right()
          && (var0.c >> 8) + var0.b[2] >= main.a.a - engine.View.extra()

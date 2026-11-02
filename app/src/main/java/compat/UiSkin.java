@@ -25,6 +25,8 @@ final class UiSkin {
    private final Bitmap[] atk = new Bitmap[3];
    private final Bitmap[] iconCache = new Bitmap[40];
    private boolean loaded;
+   /** Прозрачность в покое (255 = непрозрачно), чтобы кнопки не закрывали диалоги и мир. */
+   static final int A_RING = 105, A_ICON = 170, A_SLOT = 135, A_SLOT_ICON = 190;
 
    UiSkin() {
       px.setFilterBitmap(false);
@@ -161,7 +163,7 @@ final class UiSkin {
       if (b == null) {
          return;
       }
-      sprite(c, b, cx, cy, r * 2f, r * 2f * b.getHeight() / b.getWidth(), down ? 255 : 215);
+      sprite(c, b, cx, cy, r * 2f, r * 2f * b.getHeight() / b.getWidth(), down ? 235 : A_RING);
    }
 
    private void label(Canvas c, String t, float cx, float cy, float size, int color) {
@@ -169,6 +171,7 @@ final class UiSkin {
       outl.setTextSize(size);
       outl.setStrokeWidth(Math.max(2f, size * 0.16f));
       txt.setColor(color);
+      outl.setColor((color & 0xFF000000) == 0xFF000000 ? 0xFF2A1408 : (((color >>> 24) * 3 / 4) << 24) | 0x2A1408);
       float ty = cy - (txt.descent() + txt.ascent()) / 2f;
       c.drawText(t, cx, ty, outl);
       c.drawText(t, cx, ty, txt);
@@ -201,38 +204,49 @@ final class UiSkin {
       }
       ring(c, cx, cy, r, down);
       Bitmap[] arrows = down ? arrowGreen : arrowGold;
+      int ia = down ? 255 : A_ICON;
       switch (id) {
-         case "left": fit(c, arrows[1], cx, cy, r * 1.15f, 255); break;
-         case "right": fit(c, arrows[3], cx, cy, r * 1.15f, 255); break;
-         case "up": fit(c, arrows[0], cx, cy, r * 1.15f, 255); break;
-         case "down": fit(c, arrows[2], cx, cy, r * 1.15f, 255); break;
+         case "left": fit(c, arrows[1], cx, cy, r * 1.15f, ia); break;
+         case "right": fit(c, arrows[3], cx, cy, r * 1.15f, ia); break;
+         case "up": fit(c, arrows[0], cx, cy, r * 1.15f, ia); break;
+         case "down": fit(c, arrows[2], cx, cy, r * 1.15f, ia); break;
          case "jump":
-            fit(c, arrows[0], cx, cy - r * 0.22f, r * 0.95f, 255);
-            label(c, "ПРЫЖОК", cx, cy + r * 0.52f, r * 0.30f, down ? 0xFFB6F25A : 0xFFFFD35A);
+            fit(c, arrows[0], cx, cy - r * 0.22f, r * 0.95f, ia);
+            label(c, "ПРЫЖОК", cx, cy + r * 0.52f, r * 0.30f, (ia << 24) | (down ? 0xB6F25A : 0xFFD35A));
             break;
          case "atk": {
             if (down && spark != null) {
-               fit(c, spark, cx + r * 0.2f, cy - r * 0.05f, r * 1.7f, 235); // вспышка удара
+               fit(c, spark, cx + r * 0.2f, cy - r * 0.05f, r * 1.7f, 200); // вспышка удара
             }
-            int tier = state != null ? state[6] : 0;
-            Bitmap sw = atk[Math.max(0, Math.min(2, tier))];
-            if (sw != null) {
-               c.save();
-               c.rotate(-32f, cx, cy);
-               fit(c, sw, cx, cy, r * 1.75f, 255);
-               c.restore();
+            Bitmap dyn = null;
+            try {
+               javax.microedition.lcdui.Image img = main.f.uiWeaponIcon();
+               dyn = img == null ? null : img.getBitmap();
+            } catch (Throwable ignored) {
+            }
+            if (dyn != null) {
+               fit(c, dyn, cx, cy, r * 1.7f, ia); // меч и шлейф экипированного оружия в момент удара
+            } else {
+               int tier = state != null ? state[6] : 0;
+               Bitmap sw = atk[Math.max(0, Math.min(2, tier))];
+               if (sw != null) {
+                  c.save();
+                  c.rotate(-32f, cx, cy);
+                  fit(c, sw, cx, cy, r * 1.5f, ia);
+                  c.restore();
+               }
             }
             break;
          }
          case "pause": {
             float bw = r * 0.22f, bh = r * 0.8f;
-            px.setColor(down ? 0xFFB6F25A : 0xFFFFD35A);
+            px.setColor((ia << 24) | (down ? 0xB6F25A : 0xFFD35A));
             c.drawRect(cx - bw * 1.4f, cy - bh / 2, cx - bw * 0.4f, cy + bh / 2, px);
             c.drawRect(cx + bw * 0.4f, cy - bh / 2, cx + bw * 1.4f, cy + bh / 2, px);
             break;
          }
          case "info":
-            label(c, "i", cx, cy, r * 1.15f, down ? 0xFFB6F25A : 0xFFFFD35A);
+            label(c, "i", cx, cy, r * 1.15f, (ia << 24) | (down ? 0xB6F25A : 0xFFD35A));
             break;
          default:
             break;
@@ -247,25 +261,30 @@ final class UiSkin {
       float x0 = cx - side / 2f, y0 = cy - side / 2f;
       Rect fr = new Rect(0, 11, 20, 31);
       d.set(x0, y0, x0 + side, y0 + side);
-      px.setAlpha(down ? 255 : 225);
+      px.setAlpha(down ? 255 : A_SLOT);
       c.drawBitmap(keyImg, fr, d, px);
       px.setAlpha(255);
+      int sa = down ? 255 : A_SLOT_ICON;
       int val = st == null ? -1 : st[idx];
       Bitmap ic = slotIcon(idx, val);
       if (ic != null) {
-         sprite(c, ic, x0 + 10 * u, y0 + 9 * u, 12 * u, 12 * u, 255);
+         sprite(c, ic, x0 + 10 * u, y0 + 9 * u, 12 * u, 12 * u, sa);
       }
       // полоска перезарядки (как в HUD игры): у слотов 3 и 4
       int cd = st == null ? 0 : (idx == 2 ? st[4] : idx == 3 ? st[5] : 0);
       if (cd > 0) {
          Rect m = new Rect(20, 11, 32, 11 + Math.min(14, cd));
          d.set(x0 + 4 * u, y0 + 2 * u, x0 + 16 * u, y0 + (2 + Math.min(14, cd)) * u);
+         px.setAlpha(sa);
          c.drawBitmap(keyImg, m, d, px);
+         px.setAlpha(255);
       }
       // цифра клавиши
       Rect dg = new Rect(idx * 11, 0, idx * 11 + 11, 11);
       d.set(x0 + 8 * u, y0 + 10 * u, x0 + 19 * u, y0 + 21 * u);
+      px.setAlpha(sa);
       c.drawBitmap(keyImg, dg, d, px);
+      px.setAlpha(255);
       if (down) {
          px.setColor(0x55FFFFFF);
          c.drawRect(x0, y0, x0 + side, y0 + side, px);

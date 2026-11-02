@@ -158,6 +158,11 @@ public final class f extends Canvas implements g, Runnable {
    private static String[] bJ = new String[]{null, null, null, null, null, null, null, null, null, null};
    private static int bK;
    /** Для сенсорного интерфейса: {слот1, слот3, слот7, слот9, перезарядка1, перезарядка2, уровень меча (0..2)}. */
+   /** Иконка текущего оружия (меч со шлейфом) для кнопки атаки; null, пока не построена. */
+   public static Image uiWeaponIcon() {
+      return main.d.uiIcon;
+   }
+
    public static int[] uiState() {
       int tier = main.e.I / 4;
       return new int[]{main.e.s, main.e.t, main.e.q, main.e.r, X, Y, Math.max(0, Math.min(2, tier))};
@@ -4505,6 +4510,9 @@ public final class f extends Canvas implements g, Runnable {
 
    private void H() {
       if (!engine.c.e) {
+         if (main.d.uiIconFor != main.e.I) {
+            main.d.uiBuildWeaponIcon();
+         }
          if (main.a.c[c].a[3] || K != 701) {
             g.translate(-engine.View.extra(), 0); // портрет и шкалы — у левого края широкого экрана
             engine.h.a(g, this.al, 0, 0);

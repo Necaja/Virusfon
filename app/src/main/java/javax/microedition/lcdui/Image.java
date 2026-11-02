@@ -84,6 +84,11 @@ public class Image {
       return new Graphics(new android.graphics.Canvas(bitmap), bitmap.getWidth(), bitmap.getHeight());
    }
 
+   /** Сделать изменяемое изображение полностью прозрачным (в MIDP оно изначально белое). */
+   public void clear() {
+      bitmap.eraseColor(0);
+   }
+
    public boolean isMutable() {
       return mutable;
    }
