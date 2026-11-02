@@ -50,6 +50,40 @@ public class Display {
    /** Куда выводить готовый кадр (реализует Android GameView). */
    public interface Surface {
       void present(Image frame);
+
+      /** Нарисовать последний кадр прямо на экране (на видеокарте) из записи команд; false - не вышло, используйте present(). */
+      boolean presentReplay(float alpha);
+   }
+
+   /** Рисовать кадры на видеокарте прямо из записи команд (выставляет GameView, если телефон поддерживает). */
+   public static volatile boolean gpu;
+   private static volatile boolean presFull, pubFull;
+
+   /** Ширина (логическая) кадра, соответствующего последней опубликованной записи. */
+   public static int replayWidth() {
+      Image pb = pubBack;
+      return pb == null ? 0 : pb.getWidth();
+   }
+
+   /** Есть ли полная запись последнего кадра для показа на видеокарте. */
+   public static boolean replayReady() {
+      synchronized (pubLock) {
+         if (pubSeq != presSeq) {
+            syncPres();
+         }
+      }
+      return presFull;
+   }
+
+   /** Проиграть запись последнего кадра на g (alpha 1 = как есть, меньше - сдвиг движущихся групп назад). */
+   public static boolean replayInto(Graphics g, float alpha) {
+      synchronized (midLock) {
+         if (!presFull) {
+            return false;
+         }
+         presRec.replay(g, presDx, presDy, alpha);
+         return true;
+      }
    }
 
    // ---------- интерполяция кадров (логика игры ~20 кадров/с, показ ~60) ----------
@@ -178,7 +212,8 @@ public class Display {
          pubG.reset();
          pubG.drawImage(back, -extra(), 0, Graphics.TOP | Graphics.LEFT);
          pubReplayable = replayable;
-         if (replayable) {
+         pubFull = !rec.overflow && (worldFrame || extra() == 0);
+         if (replayable || pubFull) {
             pubRec.copyFrom(rec);
             System.arraycopy(tdx, 0, pubDx, 0, MAXT);
             System.arraycopy(tdy, 0, pubDy, 0, MAXT);
@@ -205,12 +240,13 @@ public class Display {
       double aOld = alphaBase + (pubNs - arrivalNs) / (double) periodNs;
       alphaBase = (presReplayable && pubReplayable) ? Math.max(-0.5, Math.min(0.5, (aOld - 1.0) * 0.9)) : 0.0;
       arrivalNs = pubNs;
-      if (pubReplayable) {
+      if (pubReplayable || pubFull) {
          presRec.copyFrom(pubRec);
          System.arraycopy(pubDx, 0, presDx, 0, MAXT);
          System.arraycopy(pubDy, 0, presDy, 0, MAXT);
       }
       presReplayable = pubReplayable;
+      presFull = pubFull;
       presSeq = pubSeq;
    }
 
@@ -240,6 +276,7 @@ public class Display {
             long t0 = System.nanoTime();
             boolean busy = false;
             Surface s = surface;
+            boolean gpuHandled = false;
             Image exact = null;
             boolean rep;
             synchronized (pubLock) {
@@ -251,7 +288,32 @@ public class Display {
             }
             if (s != null && exact != null) {
                float a = (float) (alphaBase + (t0 - arrivalNs) / (double) periodNs);
-               if (interpolate && rep && a <= 1.5f) {
+               if (gpu && presFull) {
+                  boolean ok = false;
+                  if (interpolate && rep && a <= 1.5f) {
+                     ok = s.presentReplay(Math.max(-0.5f, a));
+                     if (ok) {
+                        statShown(true);
+                        busy = true;
+                     }
+                  } else if (exactPending) {
+                     exactPending = false;
+                     ok = s.presentReplay(1f);
+                     if (ok) {
+                        statShown(false);
+                     } else {
+                        exactPending = true; // не вышло - отдадим кадр прежним способом
+                     }
+                  } else {
+                     ok = true; // ничего нового показывать не нужно
+                  }
+                  if (ok) {
+                     gpuHandled = true;
+                  }
+               }
+               if (gpuHandled) {
+                  gpuHandled = false;
+               } else if (interpolate && rep && a <= 1.5f) {
                   Image m = replayMid(Math.max(-0.5f, a));
                   if (m != null) {
                      s.present(m);

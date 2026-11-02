@@ -11,6 +11,7 @@ import android.view.SurfaceView;
 import java.util.ArrayList;
 import java.util.List;
 import javax.microedition.lcdui.Display;
+import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Image;
 
 /**
@@ -59,6 +60,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       setFocusable(true);
       setFocusableInTouchMode(true);
       framePaint.setFilterBitmap(false);
+      Display.gpu = android.os.Build.VERSION.SDK_INT >= 26;
       bgPaint.setColor(0xFF000000);
       fillPaint.setAntiAlias(true);
       ringPaint.setAntiAlias(true);
@@ -239,27 +241,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    }
 
    static void scale2xRows(int[] s, int[] d, int w, int h, int yFrom, int yTo) {
-      int w2 = w * 2;
-      for (int y = yFrom; y < yTo; y++) {
-         int row = y * w, up = (y > 0 ? y - 1 : y) * w, dn = (y < h - 1 ? y + 1 : y) * w;
-         int o0 = y * 2 * w2, o1 = o0 + w2;
-         for (int x = 0; x < w; x++) {
-            int p = s[row + x];
-            int a = s[up + x], b = s[row + (x < w - 1 ? x + 1 : x)], c = s[row + (x > 0 ? x - 1 : x)], e = s[dn + x];
-            int p0 = p, p1 = p, p2 = p, p3 = p;
-            if (a != e && c != b) {
-               if (c == a) p0 = a;
-               if (a == b) p1 = b;
-               if (e == c) p2 = c;
-               if (b == e) p3 = e;
-            }
-            int o = x * 2;
-            d[o0 + o] = p0;
-            d[o0 + o + 1] = p1;
-            d[o1 + o] = p2;
-            d[o1 + o + 1] = p3;
-         }
-      }
+      PixelScale.x2Rows(s, d, w, h, yFrom, yTo);
    }
 
    // ---------------- Display.Surface ----------------
@@ -299,6 +281,113 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       }
    }
 
+   private Graphics gg;
+   private int ggW;
+   private volatile boolean gpuDrawn;
+
+   private String modeText() {
+      if (gpuDrawn) {
+         return "  GPU вывод " + outPerSec + "/с";
+      }
+      return smoothScale ? "  ап2x " + Math.round(upMs) + "мс вывод " + outPerSec + "/с" : "  апскейл выкл";
+   }
+
+   /** Кадр прямо на экран на видеокарте: команды рисования проигрываются на аппаратном Canvas с матрицей масштаба. */
+   @Override
+   public boolean presentReplay(float alpha) {
+      if (!surfaceReady || hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
+         Display.gpu = false;
+         gpuDrawn = false;
+         return false;
+      }
+      int w = Display.replayWidth();
+      if (w <= 0 || !Display.replayReady()) {
+         return false;
+      }
+      synchronized (drawLock) {
+         SurfaceHolder holder = getHolder();
+         Canvas c = null;
+         try {
+            c = holder.lockHardwareCanvas();
+            if (c == null) {
+               return false;
+            }
+            c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
+            if (gg == null || ggW != w) {
+               gg = new Graphics(null, w, Display.HEIGHT);
+               gg.setWide((w - Display.WIDTH) / 2);
+               ggW = w;
+            }
+            float k = dst.height() / (float) Display.HEIGHT;
+            c.save();
+            c.translate(dst.left, dst.top);
+            c.scale(k, k);
+            gg.bindGpu(c, 2);
+            try {
+               Display.replayInto(gg, alpha);
+            } finally {
+               gg.unbind();
+               c.restore();
+            }
+            gpuDrawn = true;
+            drawOverlay(c);
+            return true;
+         } catch (Throwable e) {
+            System.err.println("GPU: " + e);
+            Display.gpu = false; // сбой - навсегда возвращаемся к прежнему способу вывода
+            gpuDrawn = false;
+            return false;
+         } finally {
+            if (c != null) {
+               try {
+                  holder.unlockCanvasAndPost(c);
+               } catch (Throwable ignored) {
+               }
+               countOut();
+            }
+         }
+      }
+   }
+
+   private void countOut() {
+      outFrames++;
+      long now = System.nanoTime();
+      if (now - outWindow >= 1000000000L) {
+         outPerSec = (int) Math.round(outFrames * 1e9 / (now - outWindow));
+         outFrames = 0;
+         outWindow = now;
+      }
+   }
+
+   private void drawOverlay(Canvas c) {
+      if (showStats) {
+         sp.setTextSize(Math.max(20f, dst.width() / 48f));
+         sp.setColor(0xCC000000);
+         c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
+         sp.setColor(0xFF66FF66);
+         c.drawText(Display.stats() + modeText(), 8, c.getHeight() - sp.getTextSize() * 0.35f, sp);
+      }
+      java.util.List<String> errs = ErrLog.snapshot();
+      if (!errs.isEmpty()) {
+         ep.setTextSize(Math.max(22f, dst.width() / 36f));
+         ep.setColor(0xCC000000);
+         float lh = ep.getTextSize() * 1.15f;
+         c.drawRect(0, 0, c.getWidth(), lh * errs.size() + 8, ep);
+         ep.setColor(0xFFFF5555);
+         for (int i = 0; i < errs.size(); i++) {
+            c.drawText(errs.get(i), 6, lh * (i + 1), ep);
+         }
+      }
+      int[] st = null;
+      try {
+         st = main.f.uiState();
+      } catch (Throwable ignored) {
+      }
+      for (Btn b : buttons) {
+         skin.draw(c, b.label, b.cx, b.cy, b.r, b.down, st);
+      }
+   }
+
    private void drawFrame(Bitmap bm, Paint paint) {
       synchronized (drawLock) {
       SurfaceHolder holder = getHolder();
@@ -321,42 +410,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
          src.set(0, 0, bm.getWidth(), bm.getHeight());
          c.drawBitmap(bm, src, dst, paint);
-         if (showStats) {
-            sp.setTextSize(Math.max(20f, dst.width() / 48f));
-            sp.setColor(0xCC000000);
-            c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
-            sp.setColor(0xFF66FF66);
-            c.drawText(Display.stats() + (smoothScale ? "  ап2x " + Math.round(upMs) + "мс вывод " + outPerSec + "/с" : "  апскейл выкл"), 8, c.getHeight() - sp.getTextSize() * 0.35f, sp);
-         }
-         java.util.List<String> errs = ErrLog.snapshot();
-         if (!errs.isEmpty()) {
-            ep.setTextSize(Math.max(22f, dst.width() / 36f));
-            ep.setColor(0xCC000000);
-            float lh = ep.getTextSize() * 1.15f;
-            c.drawRect(0, 0, c.getWidth(), lh * errs.size() + 8, ep);
-            ep.setColor(0xFFFF5555);
-            for (int i = 0; i < errs.size(); i++) {
-               c.drawText(errs.get(i), 6, lh * (i + 1), ep);
-            }
-         }
-         int[] st = null;
-         try {
-            st = main.f.uiState();
-         } catch (Throwable ignored) {
-         }
-         for (Btn b : buttons) {
-            skin.draw(c, b.label, b.cx, b.cy, b.r, b.down, st);
-         }
+         drawOverlay(c);
       } finally {
          if (c != null) {
             holder.unlockCanvasAndPost(c);
-            outFrames++;
-            long now = System.nanoTime();
-            if (now - outWindow >= 1000000000L) {
-               outPerSec = (int) Math.round(outFrames * 1e9 / (now - outWindow));
-               outFrames = 0;
-               outWindow = now;
-            }
+            gpuDrawn = false;
+            countOut();
          }
       }
       }
@@ -400,9 +459,19 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
             onButton |= b.hit(ev.getX(), ev.getY());
          }
          if (!onButton) { // касание строки диагностики: вкл/выкл сглаживающий апскейл
-            smoothScale = !smoothScale;
+            // цикл режимов: видеокарта -> сглаживание на процессоре -> без сглаживания -> видеокарта
+            if (Display.gpu) {
+               Display.gpu = false;
+               smoothScale = true;
+            } else if (smoothScale) {
+               smoothScale = false;
+            } else {
+               smoothScale = true;
+               Display.gpu = android.os.Build.VERSION.SDK_INT >= 26 && !hwFailed;
+            }
             upFrames = 0;
             upMs = 0;
+            Display.presentAgain();
             return true;
          }
       }

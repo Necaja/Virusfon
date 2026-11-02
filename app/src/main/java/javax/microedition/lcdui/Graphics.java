@@ -8,9 +8,15 @@ public class Graphics {
    public static final int HCENTER = 1, VCENTER = 2, LEFT = 4, RIGHT = 8, TOP = 16, BOTTOM = 32, BASELINE = 64;
    public static final int SOLID = 0, DOTTED = 1;
 
-   private final android.graphics.Canvas c;
+   private android.graphics.Canvas c;
    private final Paint fill = new Paint();
    private final Paint bmp = new Paint();
+   private final Paint fillAA = new Paint();
+   private final Paint hqPaint = new Paint();
+   private final RectF dstF = new RectF();
+   /** Режим вывода прямо на экранный (аппаратный) Canvas: матрица масштаба уже выставлена снаружи. */
+   private boolean gpu;
+   private int hqk = 1;
    private final RectF oval = new RectF();
    private final int width, height;
    private int color = 0xFF000000;
@@ -22,6 +28,19 @@ public class Graphics {
    private int extra;
    /** Запись команд кадра (только для экранного Graphics), см. Rec. */
    private Rec rec;
+
+   /** Привязать к экранному Canvas (матрица масштаба задана снаружи) и включить увеличенные картинки. */
+   public void bindGpu(Object canvas, int k) {
+      c = (android.graphics.Canvas) canvas;
+      gpu = true;
+      hqk = k;
+      hqPaint.setFilterBitmap(true);
+   }
+
+   public void unbind() {
+      c = null;
+      gpu = false;
+   }
 
    void setRec(Rec r) {
       rec = r;
@@ -45,6 +64,8 @@ public class Graphics {
       this.height = h;
       fill.setAntiAlias(false);
       fill.setStrokeWidth(1f);
+      fillAA.setAntiAlias(true);
+      fillAA.setStrokeWidth(1f);
       bmp.setFilterBitmap(false);
       bmp.setAntiAlias(false);
       reset();
@@ -204,20 +225,22 @@ public class Graphics {
    public void fillArc(int x, int y, int w, int h, int startAngle, int arcAngle) {
       if (rec != null) rec.add(10, x, y, w, h, startAngle, arcAngle, null);
       begin();
-      fill.setStyle(Paint.Style.FILL);
-      fill.setColor(color);
+      Paint pa = gpu ? fillAA : fill;
+      pa.setStyle(Paint.Style.FILL);
+      pa.setColor(color);
       oval.set(tx + x, ty + y, tx + x + w, ty + y + h);
-      c.drawArc(oval, -startAngle, -arcAngle, true, fill); // MIDP: против часовой, Android: по часовой
+      c.drawArc(oval, -startAngle, -arcAngle, true, pa); // MIDP: против часовой, Android: по часовой
       end();
    }
 
    public void drawArc(int x, int y, int w, int h, int startAngle, int arcAngle) {
       if (rec != null) rec.add(11, x, y, w, h, startAngle, arcAngle, null);
       begin();
-      fill.setStyle(Paint.Style.STROKE);
-      fill.setColor(color);
+      Paint pa = gpu ? fillAA : fill;
+      pa.setStyle(Paint.Style.STROKE);
+      pa.setColor(color);
       oval.set(tx + x + 0.5f, ty + y + 0.5f, tx + x + w + 0.5f, ty + y + h + 0.5f);
-      c.drawArc(oval, -startAngle, -arcAngle, false, fill);
+      c.drawArc(oval, -startAngle, -arcAngle, false, pa);
       end();
    }
 
@@ -229,9 +252,10 @@ public class Graphics {
       p.lineTo(tx + x2, ty + y2);
       p.lineTo(tx + x3, ty + y3);
       p.close();
-      fill.setStyle(Paint.Style.FILL);
-      fill.setColor(color);
-      c.drawPath(p, fill);
+      Paint pa = gpu ? fillAA : fill;
+      pa.setStyle(Paint.Style.FILL);
+      pa.setColor(color);
+      c.drawPath(p, pa);
       end();
    }
 
@@ -305,7 +329,13 @@ public class Graphics {
       if ((anchor & HCENTER) != 0) x -= w / 2; else if ((anchor & RIGHT) != 0) x -= w;
       if ((anchor & VCENTER) != 0) y -= h / 2; else if ((anchor & BOTTOM) != 0) y -= h;
       begin();
-      c.drawBitmap(img.bitmap, tx + x, ty + y, bmp);
+      android.graphics.Bitmap q = gpu ? img.hq(hqk) : null;
+      if (q != null) {
+         dstF.set(tx + x, ty + y, tx + x + w, ty + y + h);
+         c.drawBitmap(q, null, dstF, hqPaint);
+      } else {
+         c.drawBitmap(img.bitmap, tx + x, ty + y, bmp);
+      }
       end();
    }
 
@@ -333,7 +363,13 @@ public class Graphics {
       }
       c.scale(fh ? -1 : 1, fv ? -1 : 1);
       c.translate(-w / 2f, -h / 2f);
-      c.drawBitmap(img.bitmap, 0, 0, bmp);
+      android.graphics.Bitmap q = gpu ? img.hq(hqk) : null;
+      if (q != null) {
+         dstF.set(0, 0, w, h);
+         c.drawBitmap(q, null, dstF, hqPaint);
+      } else {
+         c.drawBitmap(img.bitmap, 0, 0, bmp);
+      }
       end();
    }
 
