@@ -232,7 +232,7 @@ public final class b {
    private static void a(String var0, int var1, int var2, int var3) {
       engine.h.a(main.f.g, 0, 85, 240, 150, 4263240, 16706981);
       engine.h.a(main.f.g, 1, 86, 238, 148, 16706981, 9207808);
-      engine.d.a(main.f.g, var0, 15597476, 240 - (238 - engine.g.a.stringWidth("вводить")) + 4 >> 1, 91, 240 - engine.g.a.stringWidth("вводить"), 142);
+      engine.d.a(main.f.g, var0, 15597476, 240 - (238 - engine.d.margin()) + 4 >> 1, 91, 240 - engine.d.margin(), 142);
       if (main.f.d(51488)) {
          if (!engine.d.c()) {
             engine.d.b();

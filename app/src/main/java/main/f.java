@@ -180,6 +180,8 @@ public final class f extends Canvas implements g, Runnable {
    private static int bS;
    private static String[] bT;
    private boolean bU;
+   private int tipT;
+   private String[] tipLines = new String[0];
    private int bV;
 
    static void a(int var0) {
@@ -1079,20 +1081,8 @@ public final class f extends Canvas implements g, Runnable {
 
                      for (int var25 = 0; var25 < be.length; var25++) {
                         if (be[var25] != null) {
-                           short var15 = 145;
-                           byte var16 = 30;
-                           short var30 = 240;
-                           engine.h.a(g, 0, 145, 240, 30, 6907220, 16635556);
-                           engine.h.a(g, 3, 148, 234, 24, 16568212, 16707534);
-                           engine.d.a(
-                              g,
-                              be[var25],
-                              6764371,
-                              240 - (238 - engine.g.a.stringWidth("Вводить ")) + 4 >> 1,
-                              150 + (20 - engine.g.b >> 1),
-                              240 - engine.g.a.stringWidth("Вводить "),
-                              engine.g.b * (24 / engine.g.b)
-                           );
+                           engine.d.panel(g, 10, 128, 220, 48);
+                           engine.d.a(g, be[var25], 6764371, 20, 136, 200, engine.g.b * 2);
                            if (d(49184)) {
                               if (engine.d.c()) {
                                  if (!engine.d.d()) {
@@ -1141,12 +1131,7 @@ public final class f extends Canvas implements g, Runnable {
                            this.K();
                         }
 
-                        if (this.bU) {
-                           engine.h.a(g, this.aq, 0, 272 - this.aq.getHeight());
-                        }
-
-                        engine.h.a(g, aC, 0, 270);
-                        engine.d.a(g, bT[bR], var20, 10, (42 - (engine.g.b << 1) >> 1) + 320 - 47, 220, engine.g.b << 1);
+                        this.drawDialog(var20);
                         if (d(49184)) {
                            if (engine.d.c()) {
                               if (!engine.d.d()) {
@@ -2095,17 +2080,32 @@ public final class f extends Canvas implements g, Runnable {
          this.aR = 1;
       } else if (this.aR == 1) {
          engine.h.a(g, 0);
-         engine.h.a(g, 0, 77, 240, 120, 16745472, 16434560);
-         engine.h.a(g, 1, 78, 238, 118, 16434560, 16707534);
-         engine.d.b(g, "Совет: ", -1, 82, 25011, 8962304, 20);
-         String[] var1 = engine.d.a(this.aT[this.aU], 240 / engine.g.a.stringWidth("Вводить ") - 1);
-
-         for (int var2 = 0; var2 < var1.length; var2++) {
-            engine.d.b(g, var1[var2], -1, 102 + var2 * 20, 25011, 8962304, 20);
+         if (this.tipT == 0) {
+            this.tipLines = engine.d.wrap(this.aT[this.aU].trim(), 190);
+         }
+         this.tipT++;
+         int th = 44 + this.tipLines.length * (engine.g.b + 3);
+         int ty = 150 - (th >> 1);
+         engine.d.darkPanel(g, 14, ty, 212, th);
+         engine.d.b(g, "СОВЕТ", -1, ty + 9, 0xE8C766, 0x000000, 20);
+         g.setColor(0xC9A04A);
+         g.fillRect(40, ty + 11 + engine.g.b, 160, 1);
+         for (int var2 = 0; var2 < this.tipLines.length; var2++) {
+            engine.d.b(g, this.tipLines[var2], -1, ty + 20 + engine.g.b + var2 * (engine.g.b + 3), 0xF5E8C8, 0x000000, 20);
          }
 
-         engine.d.b(g, "Загрузка с forum.fonzo.ru ... ", -1, 275, 16777215, 0, 20);
+         int bw = 160;
+         int bx = 40;
+         int by = 262;
+         g.setColor(0xC9A04A);
+         g.fillRect(bx - 1, by - 1, bw + 2, 8);
+         g.setColor(0x1B1410);
+         g.fillRect(bx, by, bw, 6);
+         g.setColor(0xE8C766);
+         g.fillRect(bx + 1, by + 1, Math.min(bw - 2, (bw - 2) * this.tipT / 20), 4);
+         engine.d.b(g, "Загрузка с forum.fonzo.ru ... ", -1, 274, 0xF5E8C8, 0x000000, 20);
          if (engine.a.b(20)) {
+            this.tipT = 0;
             this.aR = 2;
          }
       } else if (this.aR == 2) {
@@ -4864,14 +4864,77 @@ public final class f extends Canvas implements g, Runnable {
       }
    }
 
+   /** Окно диалога вверху экрана: портрет говорящего слева, имя и текст справа. */
+   private void drawDialog(int color) {
+      String[] sp = splitSpeaker(bT[bR]);
+      int ex = Math.min(engine.View.extra(), 40);
+      int x = -ex;
+      int w = 240 + ex * 2;
+      int y = 6;
+      int h = 84;
+      engine.d.panel(g, x, y, w, h);
+      int tx = x + 12;
+      Image face = this.bU ? this.aq : null;
+      if (face != null) {
+         int fw = face.getWidth();
+         int fh = face.getHeight();
+         // рамка портрета
+         g.setColor(0x2A1B10);
+         g.fillRect(x + 8, y + 8, 64, h - 16);
+         g.setColor(0xC9A04A);
+         g.fillRect(x + 9, y + 9, 62, h - 18);
+         g.setColor(0x6E5A7A);
+         g.fillRect(x + 10, y + 10, 60, h - 20);
+         g.setColor(0x8F7BA0);
+         g.fillRect(x + 10, y + 10, 60, (h - 20) / 2);
+         g.setClip(x + 10, y + 10, 60, h - 20);
+         g.drawImage(face, x + 10 + (60 - fw >> 1), y + h - 10 - fh, 20);
+         g.setClip(0, 0, 240, 320);
+         tx = x + 80;
+      }
+      int tw = x + w - 12 - tx;
+      int ty = y + 8;
+      if (sp[0] != null) {
+         engine.d.b(g, sp[0], tx, y + 6, 0x9A3412, 0xFEEFCE, 20);
+         g.setColor(0xC9A04A);
+         g.fillRect(tx, y + 7 + engine.g.b, tw, 1);
+         ty = y + 11 + engine.g.b;
+      }
+      int lines = Math.max(1, (y + h - 8 - ty) / engine.g.b);
+      engine.d.a(g, sp[1], color, tx, ty, tw, lines * engine.g.b);
+      if (engine.d.c() && (System.currentTimeMillis() / 350 & 1) == 0) {
+         int ax = x + w - 18;
+         int ay = y + h - 14;
+         g.setColor(0x9A3412);
+         g.fillRect(ax, ay, 9, 2);
+         g.fillRect(ax + 1, ay + 2, 7, 2);
+         g.fillRect(ax + 2, ay + 4, 5, 2);
+         g.fillRect(ax + 3, ay + 6, 3, 2);
+      }
+   }
+
+   /** Делит реплику "Имя: текст" на имя и текст. Если имени нет - имя null. */
+   private static String[] splitSpeaker(String line) {
+      int n = Math.min(line.length(), 18);
+      for (int i = 1; i < n; i++) {
+         char c = line.charAt(i);
+         if (c == ':' || c == '\uFF1A') {
+            String name = line.substring(0, i).trim();
+            if (name.length() > 0 && name.indexOf(' ') < 0) {
+               return new String[]{name, line.substring(i + 1).trim()};
+            }
+            break;
+         }
+         if (c == '.' || c == '!' || c == '?' || c == ',' || c == ' ') {
+            break;
+         }
+      }
+      return new String[]{null, line.trim()};
+   }
+
    private void K() {
-      String var1 = "";
-      int var2 = 0;
-
-      do {
-         var1 = var1 + bT[bR].charAt(var2);
-      } while (bT[bR].charAt(var2++) != '：' && var2 < bT[bR].length());
-
+      String[] sp = splitSpeaker(bT[bR]);
+      String var1 = sp[0] == null ? "" : sp[0] + ": ";
       String var4 = "";
       this.bU = true;
       if (var1.equals("Atlantida: ")) {
@@ -4905,11 +4968,8 @@ public final class f extends Canvas implements g, Runnable {
    }
 
    private static void g(int var0, int var1) {
-      engine.h.a(g, 240 - var0 >> 1, 320 - var1 >> 1, var0, var1, 6907220, 15580812);
-      engine.h.a(g, 240 - (var0 - 4) >> 1, 320 - (var1 - 4) >> 1, var0 - 4, var1 - 4, 15580812, 16707534);
-      engine.d.a(
-         g, bs, 6764371, 240 - (var0 - 2 - engine.g.a.stringWidth("Вводить ")) + 4 >> 1, 320 - (var1 - 8) + 4 >> 1, var0 - engine.g.a.stringWidth("Вводить "), var1 - 8
-      );
+      engine.d.panel(g, 240 - var0 >> 1, 320 - var1 >> 1, var0, var1);
+      engine.d.a(g, bs, 6764371, (240 - var0 >> 1) + 12, (320 - var1 >> 1) + 10, var0 - 24, var1 - 20);
       if (d(114720)) {
          if (engine.d.c()) {
             if (!engine.d.d()) {
@@ -4925,18 +4985,17 @@ public final class f extends Canvas implements g, Runnable {
    }
 
    private int a(String var1, String var2, String var3) {
-      engine.h.a(g, 20, 129, 200, 62, 6907220, 16635556);
-      engine.h.a(g, 23, 132, 194, 56, 16568212, 16707534);
-      engine.h.a(g, -1, 134, 190, 24, 16707534, 13549230);
-      engine.d.a(g, var1, 6764371, 240 - (198 - engine.g.a.stringWidth("Вводить ")) + 4 >> 1, 134 + (24 - engine.g.b >> 1), 200 - engine.g.a.stringWidth("Вводить "), engine.g.b);
+      engine.d.panel(g, 14, 104, 212, 88);
+      engine.h.a(g, -1, 112, 196, 40, 16707534, 13549230);
+      engine.d.a(g, var1, 6764371, 26, 117, 188, engine.g.b * 2);
       if (this.bV == 0) {
          engine.h.a(g, 28, 159, 54, 25, 16707534, 13549230);
       } else if (this.bV == 1) {
          engine.h.a(g, 159, 159, 54, 25, 16707534, 13549230);
       }
 
-      engine.d.c(g, var2, 28 + (54 - engine.g.a.stringWidth("Да ") >> 1), 159 + (25 - engine.g.b >> 1), 15597476, 6764371, 20);
-      engine.d.c(g, var3, 159 + (54 - engine.g.a.stringWidth("Да ") >> 1), 159 + (25 - engine.g.b >> 1), 15597476, 6764371, 20);
+      engine.d.c(g, var2.trim(), 28 + (54 - engine.g.a.stringWidth(var2.trim()) >> 1), 159 + (25 - engine.g.b >> 1), 15597476, 6764371, 20);
+      engine.d.c(g, var3.trim(), 159 + (54 - engine.g.a.stringWidth(var3.trim()) >> 1), 159 + (25 - engine.g.b >> 1), 15597476, 6764371, 20);
       if (engine.d.c() && engine.a.b(10)) {
          engine.d.d();
       }

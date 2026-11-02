@@ -67,71 +67,9 @@ public final class d {
 
    public static void a(Graphics var0, String var1, int var2, int var3, int var4, int var5, int var6) {
       if (h == null) {
-         int var7 = var5;
-         Font var16 = engine.g.a;
-         var1 = var1;
-         String[] var23;
-         if (var1 == null) {
-            var23 = null;
-         } else {
-            if (var5 < var16.charWidth('哈')) {
-               var7 = var16.charWidth('哈');
-            }
+         String[] var23 = var1 == null ? null : wrapPages(var1, var5);
 
-            int var8 = 0;
-            int var9 = 0;
-            Vector var10 = new Vector();
-            StringBuffer var11 = null;
-            boolean var17 = false;
-
-            while (var1.length() > var8) {
-               char var18;
-               switch (var18 = var1.charAt(var8)) {
-                  case '\b':
-                     (var11 = new StringBuffer(var1)).deleteCharAt(var8);
-                     var1 = var11.toString();
-                     break;
-                  case '\t':
-                     (var11 = new StringBuffer(var1)).deleteCharAt(var8);
-                     var11.insert(var8, "　　");
-                     var1 = var11.toString();
-                     break;
-                  case '\n':
-                     var10.addElement(var1.substring(0, var8));
-                     var1 = var1.substring(var8 + 1);
-                     var9 = 0;
-                     var8 = 0;
-                     break;
-                  case '\u000b':
-                  default:
-                     if (var9 + var16.charWidth(var18) > var7) {
-                        var10.addElement(var1.substring(0, var8));
-                        var1 = var1.substring(var8);
-                        var9 = 0;
-                        var8 = 0;
-                     } else {
-                        var9 += var16.charWidth(var18);
-                        var8++;
-                     }
-                     break;
-                  case '\f':
-                     (var11 = new StringBuffer(var1)).deleteCharAt(var8);
-                     var1 = var11.toString();
-                     var10.addElement("Дальше");
-                     break;
-                  case '\r':
-                     (var11 = new StringBuffer(var1)).deleteCharAt(var8);
-                     var1 = var11.toString();
-               }
-            }
-
-            var10.addElement(var1);
-            String[] var13 = new String[var10.size()];
-            var10.copyInto(var13);
-            var23 = var13;
-         }
-
-         h = a(var23, var6 / engine.g.b);
+         h = a(var23, Math.max(1, var6 / engine.g.b));
          f = 0;
          e = 0;
          d = 0;
@@ -437,6 +375,139 @@ public final class d {
 
    public static int m() {
       return l + k;
+   }
+
+   /** Отступ текста от краёв рамки (в оригинале считался по ширине китайских иероглифов). */
+   public static int margin() {
+      return 20;
+   }
+
+   private static int sw(String s) {
+      return engine.g.a.stringWidth(s);
+   }
+
+   /**
+    * Перенос по словам в пикселях. '\n' - жёсткий перенос, '\f' - конец страницы (маркер "Дальше"),
+    * '\t' - отступ, '\b' и '\r' игнорируются. Слишком длинные слова режутся по символам.
+    */
+   public static String[] wrapPages(String text, int px) {
+      if (px < 40) {
+         px = 40;
+      }
+      Vector out = new Vector();
+      StringBuffer line = new StringBuffer();
+      StringBuffer word = new StringBuffer();
+      int lineW = 0;
+      int spaceW = Math.max(1, sw(" "));
+      int n = text.length();
+      for (int i = 0; i <= n; i++) {
+         char c = i < n ? text.charAt(i) : '\n';
+         if (c == '\b' || c == '\r') {
+            continue;
+         }
+         if (c == '\t') {
+            c = ' ';
+         }
+         boolean brk = c == '\n' || c == '\f' || i == n;
+         if (c == ' ' || brk) {
+            if (word.length() > 0) {
+               String w = word.toString();
+               int ww = sw(w);
+               if (lineW > 0 && lineW + spaceW + ww > px) {
+                  out.addElement(line.toString());
+                  line.setLength(0);
+                  lineW = 0;
+               }
+               while (ww > px) { // слово длиннее строки
+                  int k = 1;
+                  while (k < w.length() && sw(w.substring(0, k + 1)) <= px) {
+                     k++;
+                  }
+                  if (lineW > 0) {
+                     out.addElement(line.toString());
+                     line.setLength(0);
+                     lineW = 0;
+                  }
+                  out.addElement(w.substring(0, k));
+                  w = w.substring(k);
+                  ww = sw(w);
+               }
+               if (w.length() > 0) {
+                  if (lineW > 0) {
+                     line.append(' ');
+                     lineW += spaceW;
+                  }
+                  line.append(w);
+                  lineW += ww;
+               }
+               word.setLength(0);
+            }
+            if (brk) {
+               if (i < n || line.length() > 0 || out.isEmpty()) {
+                  if (c == '\f') {
+                     if (line.length() > 0) {
+                        out.addElement(line.toString());
+                     }
+                     out.addElement("Дальше");
+                  } else if (i < n) {
+                     out.addElement(line.toString());
+                  } else if (line.length() > 0 || out.isEmpty()) {
+                     out.addElement(line.toString());
+                  }
+                  line.setLength(0);
+                  lineW = 0;
+               }
+            }
+         } else {
+            word.append(c);
+         }
+      }
+      String[] r = new String[out.size()];
+      out.copyInto(r);
+      return r;
+   }
+
+   /** Обычный перенос по словам для строк, которые рисуются без постраничного вывода. */
+   public static String[] wrap(String text, int px) {
+      String[] a = wrapPages(text, px);
+      Vector v = new Vector();
+      for (int i = 0; i < a.length; i++) {
+         if (!a[i].equals("Дальше")) {
+            v.addElement(a[i]);
+         }
+      }
+      String[] r = new String[v.size()];
+      v.copyInto(r);
+      return r;
+   }
+
+   /** Панель в стиле игры: тёмная рамка, золотая линия, кремовая заливка с лёгким затенением снизу. */
+   public static void panel(Graphics g, int x, int y, int w, int h) {
+      g.setClip(0, 0, 240, 320);
+      g.setColor(0x2A1B10);
+      g.fillRect(x, y, w, h);
+      g.setColor(0xC9A04A);
+      g.fillRect(x + 1, y + 1, w - 2, h - 2);
+      g.setColor(0x5A3A1E);
+      g.fillRect(x + 2, y + 2, w - 4, h - 4);
+      g.setColor(0xFEEFCE);
+      g.fillRect(x + 3, y + 3, w - 6, h - 6);
+      g.setColor(0xF3DDAE);
+      g.fillRect(x + 3, y + h - 8, w - 6, 5);
+   }
+
+   /** Тёмная полупрозрачная панель для экранов загрузки. */
+   public static void darkPanel(Graphics g, int x, int y, int w, int h) {
+      g.setClip(0, 0, 240, 320);
+      g.setColor(0x000000);
+      g.fillRect(x, y, w, h);
+      g.setColor(0xC9A04A);
+      g.fillRect(x + 1, y + 1, w - 2, h - 2);
+      g.setColor(0x1B1410);
+      g.fillRect(x + 2, y + 2, w - 4, h - 4);
+      g.setColor(0x5A3A1E);
+      g.fillRect(x + 4, y + 4, w - 8, 1);
+      g.fillRect(x + 4, y + h - 5, w - 8, 1);
    }
 
    public static final String[] a(String var0, int var1) {
