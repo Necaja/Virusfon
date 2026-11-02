@@ -4852,13 +4852,13 @@ public final class f extends Canvas implements g, Runnable {
             engine.d.a(false);
             switch (bS) {
                case 0:
-                  bT = main.e.F(bQ);
+                  bT = expandSpeakers(main.e.F(bQ));
                   return;
                case 1:
-                  bT = main.e.C(bQ);
+                  bT = expandSpeakers(main.e.C(bQ));
                   return;
                case 2:
-                  bT = main.e.E(bQ);
+                  bT = expandSpeakers(main.e.E(bQ));
             }
          }
       }
@@ -4911,6 +4911,33 @@ public final class f extends Canvas implements g, Runnable {
          g.fillRect(ax + 2, ay + 4, 5, 2);
          g.fillRect(ax + 3, ay + 6, 3, 2);
       }
+   }
+
+   /** Если в одной реплике подряд говорят несколько персонажей, делит её на отдельные реплики. */
+   private static String[] expandSpeakers(String[] src) {
+      if (src == null) {
+         return null;
+      }
+      java.util.Vector out = new java.util.Vector();
+      for (int i = 0; i < src.length; i++) {
+         String t = src[i];
+         int start = 0;
+         for (int j = 1; j < t.length(); j++) {
+            char pc = t.charAt(j - 1);
+            if ((pc == '\n' || pc == '\f') && splitSpeaker(t.substring(j))[0] != null) {
+               String part = t.substring(start, j).trim();
+               if (part.length() > 0) {
+                  out.addElement(part);
+               }
+               start = j;
+            }
+         }
+         String last = t.substring(start).trim();
+         out.addElement(last.length() > 0 ? last : t);
+      }
+      String[] r = new String[out.size()];
+      out.copyInto(r);
+      return r;
    }
 
    /** Делит реплику "Имя: текст" на имя и текст. Если имени нет - имя null. */
