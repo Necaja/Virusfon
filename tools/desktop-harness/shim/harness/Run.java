@@ -11,7 +11,7 @@ public class Run {
   static int getInt(Class<?> c,String n) throws Exception { java.lang.reflect.Field f=c.getDeclaredField(n); f.setAccessible(true); return f.getInt(null);}
   public static void main(String[] a) throws Exception {
     new java.io.File(System.getProperty("java.io.tmpdir")+"/frames").mkdirs();
-    Display.setLogicalWidth(Integer.parseInt(a.length>1?a[1]:"711")); main.cMIDlet m = new main.cMIDlet(); m.hostStart();
+    Display.setLogicalWidth(Integer.parseInt(a.length>1?a[1]:"711")); main.cMIDlet m = new main.cMIDlet(); main.Trace.start(); m.hostStart();
     String[] steps = a[0].split(","); int si=0; long t0=System.currentTimeMillis(); long next=t0+4000; int last=-99, n=0; long nd=t0+6000; int lastCam=-1, camDumps=0;
     while (System.currentTimeMillis()-t0 < (a.length>3?Integer.parseInt(a[3]):60000)) {
       Thread.sleep(100);

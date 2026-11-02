@@ -42,7 +42,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    }
 
    private final List<Btn> buttons = new ArrayList<Btn>();
-   private final Btn toggle = new Btn("123", 0, false, false);
+   private final UiSkin skin = new UiSkin();
    private final Paint bgPaint = new Paint();
    private final Paint framePaint = new Paint();
    private final Paint fillPaint = new Paint();
@@ -52,7 +52,6 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    private final Rect src = new Rect();
    private final Rect dst = new Rect();
    private volatile boolean surfaceReady;
-   private volatile boolean numpadOn;
 
    public GameView(Context ctx) {
       super(ctx);
@@ -68,24 +67,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       textPaint.setTextAlign(Paint.Align.CENTER);
       textPaint.setFakeBoldText(true);
 
-      buttons.add(new Btn("◄", -3, false, false));    // 0 влево
-      buttons.add(new Btn("►", -4, false, false));    // 1 вправо
-      buttons.add(new Btn("▲", -1, false, false));    // 2 вверх (в игре — прыжок; в меню — вверх)
-      buttons.add(new Btn("▼", -2, false, false));    // 3 вниз
-      buttons.add(new Btn("АТАКА", -5, false, false)); // 4 fire / OK
-      buttons.add(new Btn("ПРЫЖОК", -1, false, false)); // 5 тот же код, что и «вверх»
-      buttons.add(new Btn("❚❚", -6, false, false));   // 6 пауза (левая софт-клавиша: «Меню» в игре)
-      int[] sk = {1, 3, 7, 9};                         // 7..10 навыки (как на панели в игре)
-      for (int n : sk) {
-         buttons.add(new Btn(String.valueOf(n), 48 + n, true, false));
+      buttons.add(new Btn("left", -3, false, false));   // 0 влево
+      buttons.add(new Btn("right", -4, false, false));  // 1 вправо
+      buttons.add(new Btn("up", -1, false, false));     // 2 вверх (в меню — вверх, в игре — прыжок)
+      buttons.add(new Btn("down", -2, false, false));   // 3 вниз
+      buttons.add(new Btn("atk", -5, false, false));    // 4 удар / «ОК»
+      buttons.add(new Btn("jump", -1, false, false));   // 5 тот же код, что и «вверх»
+      buttons.add(new Btn("pause", -6, false, false));  // 6 левая софт-клавиша: «Меню» (пауза)
+      int[] sk = {1, 3, 7, 9};                          // 7..10 умения (как слоты внизу экрана игры)
+      for (int i = 0; i < 4; i++) {
+         buttons.add(new Btn("s" + i, 48 + sk[i], true, false));
       }
-      String[] more = {"0", "2", "4", "5", "6", "8", "*", "#"};
-      int[] codes = {48, 50, 52, 53, 54, 56, 42, 35};
-      for (int i = 0; i < more.length; i++) {
-         buttons.add(new Btn(more[i], codes[i], false, true));
-      }
-      buttons.add(new Btn("ИНФО", -7, false, false)); // правая софт-клавиша: «Инфо» / назад
-      buttons.add(toggle);
+      buttons.add(new Btn("info", -7, false, false));   // 11 правая софт-клавиша: «Инфо» / назад
    }
 
    private static void place(Btn b, float cx, float cy, float r) {
@@ -121,25 +114,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       for (int i = 0; i < 4; i++) {
          place(buttons.get(7 + i), w + arc[i][0] * u, h + arc[i][1] * u, 0.62f * u);
       }
-      // пауза — вверху справа, переключатель цифровой панели — левее
+      // пауза и инфо — вверху справа
       place(buttons.get(6), w - 1.0f * u, 0.95f * u, 0.55f * u);
-      place(buttons.get(buttons.size() - 2), w - 2.45f * u, 0.95f * u, 0.55f * u);
-      place(toggle, w - 3.9f * u, 0.95f * u, 0.5f * u);
-      // цифровая панель (по включению): две строки по центру внизу
-      int idx = 0;
-      float step = 1.25f * u;
-      for (Btn b : buttons) {
-         if (b.numpad) {
-            int row = idx / 4, col = idx % 4;
-            place(b, w / 2f + (col - 1.5f) * step, h - (1.0f + row * 1.2f) * u, 0.5f * u);
-            idx++;
-         }
-      }
+      place(buttons.get(11), w - 2.5f * u, 0.95f * u, 0.55f * u);
       ringPaint.setStrokeWidth(Math.max(2f, u * 0.045f));
    }
 
    private boolean visible(Btn b) {
-      return !b.numpad || numpadOn;
+      return true;
    }
 
    // ---------------- сглаживающий апскейл (Scale2x/EPX + билинейный показ) ----------------
@@ -252,23 +234,13 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
                c.drawText(errs.get(i), 6, lh * (i + 1), ep);
             }
          }
+         int[] st = null;
+         try {
+            st = main.f.uiState();
+         } catch (Throwable ignored) {
+         }
          for (Btn b : buttons) {
-            if (!visible(b)) {
-               continue;
-            }
-            boolean on = b.down || (b == toggle && numpadOn);
-            fillPaint.setColor(on ? 0xB0FFFFFF : 0x66202430);
-            c.drawCircle(b.cx, b.cy, b.r, fillPaint);
-            ringPaint.setColor(on ? 0xFFFFFFFF : 0x99FFFFFF);
-            c.drawCircle(b.cx, b.cy, b.r, ringPaint);
-            textPaint.setColor(on ? 0xFF101018 : 0xDDFFFFFF);
-            float size = b.r * (b.label.length() > 2 ? 0.40f : 0.85f);
-            if (b.slot || b.numpad) {
-               size = b.r * 1.0f;
-            }
-            textPaint.setTextSize(size);
-            float ty = b.cy - (textPaint.descent() + textPaint.ascent()) / 2f;
-            c.drawText(b.label, b.cx, ty, textPaint);
+            skin.draw(c, b.label, b.cx, b.cy, b.r, b.down, st);
          }
       } finally {
          if (c != null) {
@@ -340,13 +312,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          Btn b = buttons.get(k);
          if (want[k] != b.down) {
             b.down = want[k];
-            if (b == toggle) {
-               if (b.down) {
-                  numpadOn = !numpadOn;
-               }
-            } else {
-               Display.key(b.down, b.code);
-            }
+            Display.key(b.down, b.code);
          }
       }
       return true;

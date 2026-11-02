@@ -157,6 +157,12 @@ public final class f extends Canvas implements g, Runnable {
    private static int[][] bI = new int[10][2];
    private static String[] bJ = new String[]{null, null, null, null, null, null, null, null, null, null};
    private static int bK;
+   /** Для сенсорного интерфейса: {слот1, слот3, слот7, слот9, перезарядка1, перезарядка2, уровень меча (0..2)}. */
+   public static int[] uiState() {
+      int tier = main.e.I / 4;
+      return new int[]{main.e.s, main.e.t, main.e.q, main.e.r, X, Y, Math.max(0, Math.min(2, tier))};
+   }
+
    public static int X = 0;
    public static int Y = 0;
    private int bL;
