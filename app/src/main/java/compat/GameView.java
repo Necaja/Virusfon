@@ -129,49 +129,66 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    public static volatile boolean smoothScale = true;
    /** Строка диагностики внизу экрана (шаги логики/с, показ/с и т.д.). */
    public static volatile boolean showStats = true;
-   private int[] pxIn, pxOut;
+   private int[] pxOut;
    private Bitmap upBmp;
    private float upMs;
    private int upFrames;
    private static final int UP_WARMUP = 180;
    private static final float UP_LIMIT_MS = 14f;
-   private boolean filterOn;
    private boolean hwFailed;
 
-   private Bitmap upscale(Bitmap bm) {
-      if (!smoothScale) {
-         if (filterOn) {
-            framePaint.setFilterBitmap(false);
-            filterOn = false;
+   // Конвейер: поток показа только копирует кадр (1 мс), а сглаживание и вывод идут в отдельном потоке.
+   // Так проигрывание кадра и апскейл выполняются одновременно на разных ядрах, а не друг за другом.
+   private final Object upLock = new Object();
+   private boolean upReady;
+   private int[] stageIn;
+   private int stageW, stageH;
+   private Thread upThread;
+   private final Object drawLock = new Object();
+   private final Paint smoothPaint = new Paint();
+   private int outFrames;
+   private long outWindow;
+   private volatile int outPerSec;
+
+   private void upWorker() {
+      while (true) {
+         int[] in;
+         int w, h;
+         synchronized (upLock) {
+            while (!upReady) {
+               try {
+                  upLock.wait();
+               } catch (InterruptedException e) {
+                  return;
+               }
+            }
+            in = stageIn;
+            w = stageW;
+            h = stageH;
          }
-         return bm;
-      }
-      long t = System.nanoTime();
-      upFrames++;
-      int w = bm.getWidth(), h = bm.getHeight();
-      if (pxIn == null || pxIn.length != w * h) {
-         pxIn = new int[w * h];
-         pxOut = new int[w * h * 4];
-         upBmp = Bitmap.createBitmap(w * 2, h * 2, Bitmap.Config.ARGB_8888);
-      }
-      bm.getPixels(pxIn, 0, w, 0, 0, w, h);
-      scale2xParallel(pxIn, pxOut, w, h);
-      upBmp.setPixels(pxOut, 0, w * 2, 0, 0, w * 2, h * 2);
-      if (!filterOn) {
-         framePaint.setFilterBitmap(true);
-         filterOn = true;
-      }
-      float ms = (System.nanoTime() - t) / 1000000f;
-      // первые кадры идут в интерпретаторе (JIT ещё не прогрелся) и всегда медленные - их не учитываем
-      if (upFrames <= UP_WARMUP) {
-         upMs = ms;
-      } else {
-         upMs = upMs * 0.97f + ms * 0.03f;
-         if (upMs > UP_LIMIT_MS) {
-            smoothScale = false; // реально слишком медленно для этого телефона - быстрый режим (касание строки статистики включает обратно)
+         long t = System.nanoTime();
+         if (pxOut == null || pxOut.length != w * h * 4) {
+            pxOut = new int[w * h * 4];
+            upBmp = Bitmap.createBitmap(w * 2, h * 2, Bitmap.Config.ARGB_8888);
          }
+         scale2xParallel(in, pxOut, w, h);
+         upBmp.setPixels(pxOut, 0, w * 2, 0, 0, w * 2, h * 2);
+         synchronized (upLock) {
+            upReady = false; // вход использован: поток показа может готовить следующий кадр
+         }
+         float ms = (System.nanoTime() - t) / 1000000f;
+         upFrames++;
+         // первые кадры идут в интерпретаторе (JIT ещё не прогрелся) и всегда медленные - их не учитываем
+         if (upFrames <= UP_WARMUP) {
+            upMs = ms;
+         } else {
+            upMs = upMs * 0.97f + ms * 0.03f;
+            if (upMs > UP_LIMIT_MS) {
+               smoothScale = false; // реально слишком медленно для этого телефона (касание строки статистики включает обратно)
+            }
+         }
+         drawFrame(upBmp, smoothPaint);
       }
-      return upBmp;
    }
 
    /** Scale2x (EPX): углы и диагонали сглаживаются, плоские области и острые края сохраняются. */
@@ -251,6 +268,39 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       if (!surfaceReady) {
          return;
       }
+      Bitmap fb = frame.getBitmap();
+      if (!smoothScale) {
+         drawFrame(fb, framePaint);
+         return;
+      }
+      int w = fb.getWidth(), h = fb.getHeight();
+      synchronized (upLock) {
+         if (upThread == null) {
+            smoothPaint.setFilterBitmap(true);
+            upThread = new Thread(new Runnable() {
+               public void run() {
+                  upWorker();
+               }
+            }, "upscale-present");
+            upThread.setDaemon(true);
+            upThread.start();
+         }
+         if (upReady) {
+            return; // сглаживатель ещё занят прошлым кадром - этот пропускаем
+         }
+         if (stageIn == null || stageIn.length != w * h) {
+            stageIn = new int[w * h];
+         }
+         stageW = w;
+         stageH = h;
+         fb.getPixels(stageIn, 0, w, 0, 0, w, h);
+         upReady = true;
+         upLock.notifyAll();
+      }
+   }
+
+   private void drawFrame(Bitmap bm, Paint paint) {
+      synchronized (drawLock) {
       SurfaceHolder holder = getHolder();
       Canvas c = null;
       try {
@@ -269,15 +319,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
             return;
          }
          c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
-         Bitmap bm = upscale(frame.getBitmap());
          src.set(0, 0, bm.getWidth(), bm.getHeight());
-         c.drawBitmap(bm, src, dst, framePaint);
+         c.drawBitmap(bm, src, dst, paint);
          if (showStats) {
             sp.setTextSize(Math.max(20f, dst.width() / 48f));
             sp.setColor(0xCC000000);
             c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
             sp.setColor(0xFF66FF66);
-            c.drawText(Display.stats() + (smoothScale ? "  ап2x " + Math.round(upMs) + "мс" : "  апскейл выкл"), 8, c.getHeight() - sp.getTextSize() * 0.35f, sp);
+            c.drawText(Display.stats() + (smoothScale ? "  ап2x " + Math.round(upMs) + "мс вывод " + outPerSec + "/с" : "  апскейл выкл"), 8, c.getHeight() - sp.getTextSize() * 0.35f, sp);
          }
          java.util.List<String> errs = ErrLog.snapshot();
          if (!errs.isEmpty()) {
@@ -301,7 +350,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       } finally {
          if (c != null) {
             holder.unlockCanvasAndPost(c);
+            outFrames++;
+            long now = System.nanoTime();
+            if (now - outWindow >= 1000000000L) {
+               outPerSec = (int) Math.round(outFrames * 1e9 / (now - outWindow));
+               outFrames = 0;
+               outWindow = now;
+            }
          }
+      }
       }
    }
 
