@@ -14,9 +14,24 @@ android {
         versionName = "1.0-decompiled"
     }
 
+    // Фиксированный ключ подписи: иначе каждая сборка на GitHub подписывается новым случайным
+    // debug-ключом, и Android не ставит новую версию поверх старой (сохранения пропадают).
+    signingConfigs {
+        create("fixed") {
+            storeFile = file("virusphone.keystore")
+            storePassword = "virusphone"
+            keyAlias = "virusphone"
+            keyPassword = "virusphone"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("fixed")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 
