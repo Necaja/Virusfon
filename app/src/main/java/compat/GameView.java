@@ -132,6 +132,9 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    private int[] pxIn, pxOut;
    private Bitmap upBmp;
    private float upMs;
+   private int upFrames;
+   private static final int UP_WARMUP = 180;
+   private static final float UP_LIMIT_MS = 14f;
    private boolean filterOn;
    private boolean hwFailed;
 
@@ -144,6 +147,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          return bm;
       }
       long t = System.nanoTime();
+      upFrames++;
       int w = bm.getWidth(), h = bm.getHeight();
       if (pxIn == null || pxIn.length != w * h) {
          pxIn = new int[w * h];
@@ -157,9 +161,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
          framePaint.setFilterBitmap(true);
          filterOn = true;
       }
-      upMs = upMs * 0.9f + ((System.nanoTime() - t) / 1000000f) * 0.1f;
-      if (upMs > 16f) {
-         smoothScale = false; // слишком медленно для этого телефона — возвращаем быстрый режим
+      float ms = (System.nanoTime() - t) / 1000000f;
+      // первые кадры идут в интерпретаторе (JIT ещё не прогрелся) и всегда медленные - их не учитываем
+      if (upFrames <= UP_WARMUP) {
+         upMs = ms;
+      } else {
+         upMs = upMs * 0.97f + ms * 0.03f;
+         if (upMs > UP_LIMIT_MS) {
+            smoothScale = false; // реально слишком медленно для этого телефона - быстрый режим (касание строки статистики включает обратно)
+         }
       }
       return upBmp;
    }
@@ -281,6 +291,18 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    @Override
    public boolean onTouchEvent(MotionEvent ev) {
       int action = ev.getActionMasked();
+      if (action == MotionEvent.ACTION_DOWN && ev.getY() > getHeight() - 56 && ev.getX() < getWidth() * 0.62f) {
+         boolean onButton = false;
+         for (Btn b : buttons) {
+            onButton |= b.hit(ev.getX(), ev.getY());
+         }
+         if (!onButton) { // касание строки диагностики: вкл/выкл сглаживающий апскейл
+            smoothScale = !smoothScale;
+            upFrames = 0;
+            upMs = 0;
+            return true;
+         }
+      }
       boolean cancel = action == MotionEvent.ACTION_CANCEL;
       int skip = (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) ? ev.getActionIndex() : -1;
       int n = buttons.size();
