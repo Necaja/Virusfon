@@ -2671,7 +2671,7 @@ public final class f extends Canvas implements g, Runnable {
             engine.h.a(g, 0);
             engine.h.a(g, 0, 0, 240, 320);
             g.drawImage(ay[2], 0, 0, 20);
-            a(new String[]{"Помощь ", "Статус ", "Отладка: " + (engine.Fx.showStats ? "Вкл " : "Выкл ")}, this.aZ, true, true);
+            a(new String[]{"Помощь ", "Статус ", "Советы: ", "Отладка: " + (engine.Fx.showStats ? "Вкл " : "Выкл ")}, this.aZ, true, true);
             if (d(49184)) {
                switch (this.aZ) {
                   case 0:
