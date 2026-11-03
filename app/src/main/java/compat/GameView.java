@@ -398,6 +398,27 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
             c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
             src.set(0, 0, w * 2, h * 2);
             c.drawBitmap(gBmp, src, dst, gPaint);
+            if (Display.hybridReady()) {
+               // растр даёт фон и боковые поля, а картинки и текст кадра дорисовываются поверх в полном разрешении
+               if (gg == null || ggW != w) {
+                  gg = new Graphics(null, w, Display.HEIGHT);
+                  gg.setWide((w - Display.WIDTH) / 2);
+                  ggW = w;
+               }
+               int ex = (w - Display.WIDTH) / 2;
+               float k = dst.height() / (float) Display.HEIGHT;
+               c.save();
+               c.translate(dst.left, dst.top);
+               c.scale(k, k);
+               c.clipRect(ex, 0, ex + Display.WIDTH, Display.HEIGHT);
+               gg.bindGpu(c, 2);
+               try {
+                  Display.replayHybrid(gg);
+               } finally {
+                  gg.unbind();
+                  c.restore();
+               }
+            }
             gpuDrawn = true;
             drawOverlay(c);
             return true;

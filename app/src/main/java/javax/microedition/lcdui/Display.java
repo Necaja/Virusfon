@@ -63,6 +63,8 @@ public class Display {
    /** Идёт экранный эффект (книга/свиток): кадры нужно выводить непрерывно, по сигналу вертикальной синхронизации. */
    public static volatile boolean animating;
    private static volatile boolean presFull, pubFull;
+   private static volatile boolean presHybrid, pubHybrid;
+   private static volatile int presHybridFrom, pubHybridFrom;
 
    /** Ширина (логическая) кадра, соответствующего последней опубликованной записи. */
    public static int replayWidth() {
@@ -78,6 +80,22 @@ public class Display {
          }
       }
       return presFull;
+   }
+
+   /** Есть ли запись для чёткой дорисовки поверх растрового кадра (меню, текст). Не синхронизирует кадр: берётся уже принятый. */
+   public static boolean hybridReady() {
+      return presHybrid;
+   }
+
+   /** Дорисовать на g (видеокарта) в полном разрешении команды кадра, не перекрытые полупрозрачными заливками: текст и картинки меню чёткие. */
+   public static boolean replayHybrid(Graphics g) {
+      synchronized (midLock) {
+         if (!presHybrid) {
+            return false;
+         }
+         presRec.replay(g, presDx, presDy, 1f, presHybridFrom);
+         return true;
+      }
    }
 
    /** Проиграть запись последнего кадра на g (alpha 1 = как есть, меньше - сдвиг движущихся групп назад). */
@@ -218,7 +236,9 @@ public class Display {
          pubG.drawImage(back, -extra(), 0, Graphics.TOP | Graphics.LEFT);
          pubReplayable = replayable;
          pubFull = !rec.overflow && (worldFrame || extra() == 0);
-         if (replayable || pubFull) {
+         pubHybrid = !pubFull && !rec.overflow && rec.n > 0;
+         pubHybridFrom = pubHybrid ? rec.hybridStart() : 0;
+         if (replayable || pubFull || pubHybrid) {
             pubRec.copyFrom(rec);
             System.arraycopy(tdx, 0, pubDx, 0, MAXT);
             System.arraycopy(tdy, 0, pubDy, 0, MAXT);
@@ -245,13 +265,15 @@ public class Display {
       double aOld = alphaBase + (pubNs - arrivalNs) / (double) periodNs;
       alphaBase = (presReplayable && pubReplayable) ? Math.max(-0.5, Math.min(0.5, (aOld - 1.0) * 0.9)) : 0.0;
       arrivalNs = pubNs;
-      if (pubReplayable || pubFull) {
+      if (pubReplayable || pubFull || pubHybrid) {
          presRec.copyFrom(pubRec);
          System.arraycopy(pubDx, 0, presDx, 0, MAXT);
          System.arraycopy(pubDy, 0, presDy, 0, MAXT);
       }
       presReplayable = pubReplayable;
       presFull = pubFull;
+      presHybrid = pubHybrid;
+      presHybridFrom = pubHybridFrom;
       presSeq = pubSeq;
    }
 

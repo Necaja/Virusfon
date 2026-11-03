@@ -46,12 +46,32 @@ final class Rec {
 
    /** Проиграть кадр на g. Помеченные группы сдвигаются на -(1-alpha)*delta (alpha 0 = прошлый кадр, 1 = этот). */
    void replay(Graphics g, int[] dx, int[] dy, float alpha) {
+      replay(g, dx, dy, alpha, 0);
+   }
+
+   /** Индекс, с которого команды рисования не перекрыты полупрозрачными заливками кадра (для чёткой дорисовки поверх растра). */
+   int hybridStart() {
+      int last = -1;
+      for (int j = 0; j < n; j++) {
+         int op = o[j * S] & 255;
+         if (op == 15 || op == 13 || op == 14) {
+            last = j;
+         }
+      }
+      return last + 1;
+   }
+
+   /** Как replay, но команды рисования до индекса from пропускаются (состояние - цвет, шрифт, клип - применяется всегда). */
+   void replay(Graphics g, int[] dx, int[] dy, float alpha, int from) {
       g.reset();
       float k = 1f - alpha;
       for (int j = 0; j < n; j++) {
          int i = j * S;
          int op = o[i] & 255, t = o[i] >> 8;
          int a = o[i + 1], b = o[i + 2], c = o[i + 3], d = o[i + 4], e = o[i + 5], f = o[i + 6];
+         if (op >= 7 && j < from) {
+            continue;
+         }
          int sx = 0, sy = 0;
          if (t != 0) {
             sx = Math.round(-k * dx[t]);
