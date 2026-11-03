@@ -181,7 +181,6 @@ public final class f extends Canvas implements g, Runnable {
    private static String[] bT;
    private boolean bU;
    private int fxK = -1;
-   private boolean fxBf;
    private int tipT;
    private String[] tipLines = new String[0];
    private int bV;
@@ -1465,6 +1464,8 @@ public final class f extends Canvas implements g, Runnable {
                         engine.c.a(main.a.a, main.a.b, g);
                         main.a.c();
                         this.H();
+                        g.setClip(0, 0, 240, 320);
+                        g.fillRectArgb(-engine.View.extra(), 0, 240 + engine.View.extra() * 2, 320, 0x8C000000); // затемнение сцены под свитком
                      } else {
                         engine.c.a(main.a.a, main.a.b, g);
                         main.a.c();
@@ -1483,15 +1484,16 @@ public final class f extends Canvas implements g, Runnable {
 
                   if (!bx) {
                      engine.h.a(g, 0, 160 - this.by, 240, this.by << 1);
+                     scrollPanel();
                      e(120, 160);
                      f(120, 160);
                      if (this.bz == 0) {
-                        if (this.by < engine.g.b * (bw.length + 1) / 2) {
-                           this.by = this.by + engine.g.b * (bw.length + 1) / 2;
+                        if (this.by < 88) {
+                           this.by = 88;
                            break;
                         }
                      } else if (this.bz == 1 && this.by > 0) {
-                        this.by = this.by - engine.g.b * (bw.length + 1) / 2;
+                        this.by = 0;
                         f = 0;
                         break;
                      }
@@ -4398,7 +4400,7 @@ public final class f extends Canvas implements g, Runnable {
             var3 = bw[var1] + aD;
          }
 
-         engine.d.b(g, var3, 120, var6 + var2 * engine.g.b, 0, 16777215, 17);
+         engine.d.b(g, var3, 120, var6 + var2 * engine.g.b, 0x4A2E14, -1, 17);
          var2++;
       }
    }
@@ -4424,8 +4426,57 @@ public final class f extends Canvas implements g, Runnable {
             var6 = bw[var1] + aD;
          }
 
-         engine.d.b(g, var6, 120, var0 + var1 * engine.g.b + engine.g.b, 0, 6461906, 17);
+         int ty = var0 + var1 * engine.g.b + engine.g.b;
+         g.setColor(0xDDBF72); // подсветка выбранного пункта на пергаменте
+         g.fillRect(26, ty - 1, 188, engine.g.b + 2);
+         g.setColor(0xB78F3A);
+         g.fillRect(26, ty - 1, 188, 1);
+         g.fillRect(26, ty + engine.g.b, 188, 1);
+         g.setColor(0x7A1E0C);
+         g.fillTriangle(32, ty + 2, 32, ty + engine.g.b - 3, 38, ty + (engine.g.b >> 1));
+         g.fillTriangle(208, ty + 2, 208, ty + engine.g.b - 3, 202, ty + (engine.g.b >> 1));
+         engine.d.b(g, var6, 120, ty, 0x7A1E0C, -1, 17);
       }
+   }
+
+   /** Свиток меню паузы: тот же вид, в который разворачивается эффект compat.BookFx (лист 230x160 с валиками по бокам). */
+   private static void scrollPanel() {
+      int y0 = 80, y1 = 240, x0 = 5, x1 = 235;
+      g.setClip(0, 0, 240, 320);
+      g.fillRectArgb(x0, y1 + 3, x1 - x0, 6, 0x4D000000);
+      g.setColor(0xEAD9A8);
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      for (int i = 0; i < 9; i++) { // изгиб листа у валиков
+         int a = (int) (80 * (1 - i / 9f) * (1 - i / 9f));
+         g.fillRectArgb(x0 + 6 + i * 3, y0, 3, y1 - y0, (a << 24) | 0x5A3A14);
+         g.fillRectArgb(x1 - 6 - (i + 1) * 3, y0, 3, y1 - y0, (a << 24) | 0x5A3A14);
+      }
+      g.setColor(0x8B6B3A);
+      g.fillRect(x0, y0, x1 - x0, 2);
+      g.fillRect(x0, y1 - 2, x1 - x0, 2);
+      for (int i = 1; i < 7; i++) {
+         g.fillRectArgb(x0 + 16, y0 + (y1 - y0) * i / 7, x1 - x0 - 32, 1, 0x2E8B6B3A);
+      }
+      int[] cols = {0x3A2410, 0x6E4B26, 0xA97F45, 0xD6B574, 0xE9D39B, 0xD6B574, 0xA97F45, 0x6E4B26, 0x3A2410};
+      int[] wid = {1, 1, 2, 2, 2, 1, 1, 1, 1};
+      for (int side = 0; side < 2; side++) {
+         int cx = side == 0 ? x0 : x1;
+         int xx = cx - 6;
+         for (int i = 0; i < 9; i++) {
+            g.setColor(cols[i]);
+            g.fillRect(xx, y0 - 3, wid[i], y1 - y0 + 6);
+            xx += wid[i];
+         }
+         g.setColor(0xD9AE4F);
+         g.fillRect(cx - 10, y0 - 8, 20, 5);
+         g.fillRect(cx - 10, y1 + 3, 20, 5);
+         g.setColor(0x9C7424);
+         g.fillRect(cx - 10, y0 - 8, 20, 1);
+         g.fillRect(cx - 10, y1 + 7, 20, 1);
+      }
+      engine.d.b(g, "Пауза", -1, y0 + 8, 0x7A2E12, -1, 20);
+      g.setColor(0xB78F3A);
+      g.fillRect(50, y0 + 10 + engine.g.b, 140, 1);
    }
 
    public static void h() {
@@ -4872,19 +4923,18 @@ public final class f extends Canvas implements g, Runnable {
 
    /** Следит за переходами игры в окна и запускает эффект книги/свитка (см. engine.Fx). */
    private void fxWatch() {
-      boolean bfNow = this.bf != null;
       if (k != fxK) {
+         boolean npcNow = k == 19 || k == 20 || k == 24; // аптека, кузница, список задач
+         boolean npcBefore = fxK == 19 || fxK == 20 || fxK == 24;
          if (k == 9 && !bx && fxK != -1) {
             engine.Fx.start(engine.Fx.SCROLL, aN);
          } else if (k == 17 && fxK != -1) {
             engine.Fx.start(engine.Fx.BOOK, aN);
+         } else if (npcNow && !npcBefore && fxK != -1) {
+            engine.Fx.start(engine.Fx.BOOK, aN);
          }
          fxK = k;
       }
-      if (bfNow && !fxBf) {
-         engine.Fx.start(engine.Fx.BOOK, aN);
-      }
-      fxBf = bfNow;
    }
 
    /** Окно диалога вверху экрана: портрет говорящего слева, имя и текст справа. */
