@@ -132,7 +132,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    /** Выключить, если телефон не успевает: тогда кадр масштабируется "пиксель в пиксель". */
    public static volatile boolean smoothScale = true;
    /** Строка диагностики внизу экрана (шаги логики/с, показ/с и т.д.). */
-   public static volatile boolean showStats = true;
+   public static void setShowStats(boolean on) {
+      engine.Fx.showStats = on;
+      try {
+         Res.context().getSharedPreferences("settings", 0).edit().putBoolean("stats", on).apply();
+      } catch (Throwable ignored) {
+      }
+   }
+
+   public static void loadSettings() {
+      try {
+         engine.Fx.showStats = Res.context().getSharedPreferences("settings", 0).getBoolean("stats", false);
+      } catch (Throwable ignored) {
+      }
+   }
    private int[] pxOut;
    private Bitmap upBmp;
    private float upMs;
@@ -363,7 +376,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
 
    private void drawOverlay(Canvas c) {
       Display.animating = fx.draw(c, c.getWidth(), c.getHeight(), dst);
-      if (showStats) {
+      if (engine.Fx.showStats) {
          sp.setTextSize(Math.max(20f, dst.width() / 48f));
          sp.setColor(0xCC000000);
          c.drawRect(0, c.getHeight() - sp.getTextSize() * 1.5f, c.getWidth() * 0.62f, c.getHeight(), sp);
@@ -429,6 +442,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       surfaceReady = true;
       if (!sfxInit) {
          sfxInit = true;
+         loadSettings();
+         engine.Fx.onStats = new Runnable() {
+            public void run() {
+               setShowStats(engine.Fx.showStats);
+            }
+         };
          Sfx sfx = new Sfx();
          sfx.init();
          engine.Fx.sink = sfx;
@@ -462,7 +481,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    @Override
    public boolean onTouchEvent(MotionEvent ev) {
       int action = ev.getActionMasked();
-      if (action == MotionEvent.ACTION_DOWN && ev.getY() > getHeight() - 56 && ev.getX() < getWidth() * 0.62f) {
+      if (engine.Fx.showStats && action == MotionEvent.ACTION_DOWN && ev.getY() > getHeight() - 56 && ev.getX() < getWidth() * 0.62f) {
          boolean onButton = false;
          for (Btn b : buttons) {
             onButton |= b.hit(ev.getX(), ev.getY());

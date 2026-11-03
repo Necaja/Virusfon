@@ -20,6 +20,18 @@ public final class Fx {
    /** Выключатель (на будущее для настроек). */
    public static volatile boolean enabled = true;
 
+   /** Показ строки диагностики (настройки → Отладка); сохранение делает Android-часть через onStats. */
+   public static volatile boolean showStats = false;
+   public static volatile Runnable onStats;
+
+   public static void toggleStats() {
+      showStats = !showStats;
+      Runnable r = onStats;
+      if (r != null) {
+         r.run();
+      }
+   }
+
    private Fx() {
    }
 
@@ -27,7 +39,6 @@ public final class Fx {
       if (!enabled) {
          return;
       }
-      System.err.println("FXSTART " + k);
       startNs = System.nanoTime();
       kind = k;
       Sink s = sink;
