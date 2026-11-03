@@ -182,6 +182,7 @@ public final class f extends Canvas implements g, Runnable {
    private boolean bU;
    private int fxK = -1;
    private boolean fxBx, fxSkipClose;
+   private long fxDlgNs = -10000000000L;
    private int tipT;
    private String[] tipLines = new String[0];
    private int bV;
@@ -4922,9 +4923,13 @@ public final class f extends Canvas implements g, Runnable {
 
    /** Следит за переходами игры в окна и запускает эффект книги/свитка (см. engine.Fx). */
    private void fxWatch() {
+      if (L) {
+         fxDlgNs = System.nanoTime();
+      }
       fxBx = k == 9 ? bx : fxBx;
       if (k != fxK) {
-         boolean skip = fxSkipClose;
+         long nowNs = System.nanoTime();
+         boolean skip = fxSkipClose || L || nowNs - fxDlgNs < 2500000000L; // идёт/только что был диалог
          fxSkipClose = false;
          boolean npcNow = k == 19 || k == 20 || k == 24; // аптека, кузница, список задач
          boolean npcBefore = fxK == 19 || fxK == 20 || fxK == 24;
@@ -4932,7 +4937,7 @@ public final class f extends Canvas implements g, Runnable {
             engine.Fx.start(engine.Fx.SCROLL, aN);
          } else if (k == 17 && fxK != -1) {
             engine.Fx.start(engine.Fx.BOOK, aN);
-         } else if (npcNow && !npcBefore && fxK != -1) {
+         } else if (!skip && npcNow && !npcBefore && fxK != -1) {
             engine.Fx.start(engine.Fx.BOOK, aN);
          } else if (!skip && k != 11 && fxK == 9 && !fxBx) {
             engine.Fx.start(engine.Fx.SCROLL_CLOSE, aN);
