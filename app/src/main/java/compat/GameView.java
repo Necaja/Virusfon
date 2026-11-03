@@ -364,6 +364,59 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
       }
    }
 
+   private int[] gIn, gOut;
+   private Bitmap gBmp;
+   private final Paint gPaint = new Paint();
+
+   /** Готовый растровый кадр (меню/заставки) через видеокарту: Scale2x на процессоре один раз на кадр, вывод и масштаб - аппаратные. */
+   @Override
+   public boolean presentBitmapGpu(Image frame) {
+      if (!surfaceReady || hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
+         Display.gpu = false;
+         gpuDrawn = false;
+         return false;
+      }
+      Bitmap fb = frame.getBitmap();
+      int w = fb.getWidth(), h = fb.getHeight();
+      synchronized (drawLock) {
+         SurfaceHolder holder = getHolder();
+         Canvas c = null;
+         try {
+            if (gIn == null || gIn.length != w * h) {
+               gIn = new int[w * h];
+               gOut = new int[w * h * 4];
+               gBmp = Bitmap.createBitmap(w * 2, h * 2, Bitmap.Config.ARGB_8888);
+               gPaint.setFilterBitmap(true);
+            }
+            fb.getPixels(gIn, 0, w, 0, 0, w, h);
+            scale2xParallel(gIn, gOut, w, h);
+            gBmp.setPixels(gOut, 0, w * 2, 0, 0, w * 2, h * 2);
+            c = holder.lockHardwareCanvas();
+            if (c == null) {
+               return false;
+            }
+            c.drawRect(0, 0, c.getWidth(), c.getHeight(), bgPaint);
+            src.set(0, 0, w * 2, h * 2);
+            c.drawBitmap(gBmp, src, dst, gPaint);
+            gpuDrawn = true;
+            drawOverlay(c);
+            return true;
+         } catch (Throwable e) {
+            System.err.println("GPU bitmap: " + e);
+            gpuDrawn = false;
+            return false;
+         } finally {
+            if (c != null) {
+               try {
+                  holder.unlockCanvasAndPost(c);
+               } catch (Throwable ignored) {
+               }
+               countOut();
+            }
+         }
+      }
+   }
+
    private void countOut() {
       outFrames++;
       long now = System.nanoTime();

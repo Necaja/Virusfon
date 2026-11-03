@@ -53,6 +53,9 @@ public class Display {
 
       /** Нарисовать последний кадр прямо на экране (на видеокарте) из записи команд; false - не вышло, используйте present(). */
       boolean presentReplay(float alpha);
+
+      /** Готовый кадр (меню, затемнения) на видеокарте: Scale2x + сглаживание при выводе на аппаратном Canvas; false - не вышло. */
+      boolean presentBitmapGpu(Image frame);
    }
 
    /** Рисовать кадры на видеокарте прямо из записи команд (выставляет GameView, если телефон поддерживает). */
@@ -314,6 +317,20 @@ public class Display {
                      ok = true; // ничего нового показывать не нужно
                   }
                   if (ok) {
+                     gpuHandled = true;
+                  }
+               }
+               if (!gpuHandled && gpu && !presFull) {
+                  // меню, заставки, затемнения: кадр целиком из растра, но тоже через видеокарту
+                  if (exactPending) {
+                     exactPending = false;
+                     if (s.presentBitmapGpu(exact)) {
+                        statShown(false);
+                        gpuHandled = true;
+                     } else {
+                        exactPending = true;
+                     }
+                  } else {
                      gpuHandled = true;
                   }
                }
