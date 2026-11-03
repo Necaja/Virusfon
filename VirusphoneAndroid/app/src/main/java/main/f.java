@@ -4934,9 +4934,9 @@ public final class f extends Canvas implements g, Runnable {
             engine.Fx.start(engine.Fx.BOOK, aN);
          } else if (npcNow && !npcBefore && fxK != -1) {
             engine.Fx.start(engine.Fx.BOOK, aN);
-         } else if (!skip && k == 7 && fxK == 9 && !fxBx) {
+         } else if (!skip && k != 11 && fxK == 9 && !fxBx) {
             engine.Fx.start(engine.Fx.SCROLL_CLOSE, aN);
-         } else if (!skip && k == 7 && (fxK == 17 || (npcBefore && !npcNow))) {
+         } else if (!skip && (fxK == 17 || (npcBefore && !npcNow))) {
             engine.Fx.start(engine.Fx.BOOK_CLOSE, aN);
          }
          fxK = k;

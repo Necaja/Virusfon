@@ -27,6 +27,7 @@ public final class Fx {
       if (!enabled) {
          return;
       }
+      System.err.println("FXSTART " + k);
       startNs = System.nanoTime();
       kind = k;
       Sink s = sink;
