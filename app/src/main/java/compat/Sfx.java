@@ -9,7 +9,7 @@ import java.io.InputStream;
 /** Короткие звуки переходов (книга, свиток) через SoundPool: минимальная задержка, не мешает музыке. */
 public final class Sfx implements Fx.Sink {
    private SoundPool pool;
-   private int book, scroll;
+   private int book, scroll, bookClose, scrollClose;
    private boolean ready;
 
    public void init() {
@@ -17,6 +17,8 @@ public final class Sfx implements Fx.Sink {
          pool = new SoundPool.Builder().setMaxStreams(3).build();
          book = load("fx_book.wav");
          scroll = load("fx_scroll.wav");
+         bookClose = load("fx_book_close.wav");
+         scrollClose = load("fx_scroll_close.wav");
          ready = true;
       } catch (Throwable e) {
          ready = false;
@@ -48,7 +50,7 @@ public final class Sfx implements Fx.Sink {
       if (!ready) {
          return;
       }
-      int id = kind == Fx.BOOK ? book : scroll;
+      int id = kind == Fx.BOOK ? book : kind == Fx.SCROLL ? scroll : kind == Fx.BOOK_CLOSE ? bookClose : scrollClose;
       if (id != 0) {
          pool.play(id, 0.9f, 0.9f, 1, 0, 1f);
       }

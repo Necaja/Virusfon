@@ -196,10 +196,18 @@ public final class BookFx {
          buildRoller();
       }
       float t = (now - Fx.startNs) / 1e9f;
-      if (Fx.kind == Fx.BOOK) {
-         drawBook(c, sw, sh, t);
-      } else {
-         drawScroll(c, sw, sh, dst, t);
+      switch (Fx.kind) {
+         case Fx.BOOK:
+            drawBook(c, sw, sh, t);
+            break;
+         case Fx.BOOK_CLOSE: // то же самое в обратную сторону
+            drawBook(c, sw, sh, Math.max(0f, 1.0f - t));
+            break;
+         case Fx.SCROLL_CLOSE:
+            drawScroll(c, sw, sh, dst, Math.max(0f, 0.9f - t));
+            break;
+         default:
+            drawScroll(c, sw, sh, dst, t);
       }
       return true;
    }

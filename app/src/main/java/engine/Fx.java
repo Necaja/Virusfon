@@ -6,7 +6,7 @@ package engine;
  * по реальному времени, поэтому анимация идёт плавно независимо от шагов логики.
  */
 public final class Fx {
-   public static final int NONE = 0, BOOK = 1, SCROLL = 2;
+   public static final int NONE = 0, BOOK = 1, SCROLL = 2, BOOK_CLOSE = 3, SCROLL_CLOSE = 4;
    public static final long BOOK_NS = 1000000000L, SCROLL_NS = 900000000L;
 
    /** Приёмник звука (ставит Android-часть). */
@@ -27,6 +27,7 @@ public final class Fx {
       if (!enabled) {
          return;
       }
+      System.err.println("FXSTART " + k);
       startNs = System.nanoTime();
       kind = k;
       Sink s = sink;
@@ -40,6 +41,6 @@ public final class Fx {
 
    public static boolean active(long now) {
       int k = kind;
-      return k != NONE && now - startNs < (k == BOOK ? BOOK_NS : SCROLL_NS);
+      return k != NONE && now - startNs < ((k == BOOK || k == BOOK_CLOSE) ? BOOK_NS : SCROLL_NS);
    }
 }
