@@ -954,14 +954,16 @@ public final class f extends Canvas implements g, Runnable {
                   break;
                case 5:
                   f var21 = this;
-                  engine.h.a(g, 16711680);
-                  engine.h.a(g, 0, 0, 240, 320);
-                  g.drawImage(ay[1], 0, 0, 20);
-                  engine.h.a(g, ay[4], 160 - this.bO / 3 % 3, 271);
-                  engine.h.a(g, h, ay[4], 68 + this.bO / 3 % 3, 271, 12, 17, 0, 0);
+                  if (!engine.TitleScene.draw(g, this.bN, ae - 1)) {
+                     engine.h.a(g, 16711680);
+                     engine.h.a(g, 0, 0, 240, 320);
+                     g.drawImage(ay[1], 0, 0, 20);
+                     engine.h.a(g, ay[4], 160 - this.bO / 3 % 3, 271);
+                     engine.h.a(g, h, ay[4], 68 + this.bO / 3 % 3, 271, 12, 17, 0, 0);
+                     engine.d.b(g, this.bN[ae - 1], -1, 267 + (26 - engine.g.b >> 1), 15597476, 6764371, 20);
+                  }
                   this.bO++;
                   this.bO %= 12;
-                  engine.d.b(g, this.bN[ae - 1], -1, 267 + (26 - engine.g.b >> 1), 15597476, 6764371, 20);
                   if (d(49184)) {
                      switch (ae) {
                         case 1:
@@ -4734,6 +4736,7 @@ public final class f extends Canvas implements g, Runnable {
       this.aR = 0;
       bx = false;
       N = false;
+      engine.f.title = true;
       if (aN) {
          this.ab.a("menu", true, 1);
       }
@@ -4926,6 +4929,7 @@ public final class f extends Canvas implements g, Runnable {
 
    /** Следит за переходами игры в окна и запускает эффект книги/свитка (см. engine.Fx). */
    private void fxWatch() {
+      engine.f.title = k == 5 || k == 6 || k == 11 || k == 18 || k == 25;
       if (L) {
          fxDlgNs = System.nanoTime();
       }

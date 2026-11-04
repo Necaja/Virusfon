@@ -13,7 +13,7 @@ public final class Manager {
    }
 
    public static Player createPlayer(InputStream in, String type) throws IOException, MediaException {
-      String ext = type != null && type.contains("wav") ? ".wav" : ".mid";
+      String ext = type != null && type.contains("wav") ? ".wav" : type != null && type.contains("mpeg") ? ".mp3" : ".mid";
       File f = new File(Res.context().getCacheDir(), "snd" + (counter++) + ext);
       FileOutputStream out = new FileOutputStream(f);
       try {

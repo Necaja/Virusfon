@@ -8,11 +8,15 @@ public final class f {
    private Player a;
    private String[] b = new String[]{"audio/x-tone-seq", "audio/midi", "audio/x-wav"};
    private String c = "";
+   /** Главное меню и его экраны: вместо MIDI "menu" играет трек title.mp3 (выставляет main.f). */
+   public static volatile boolean title;
 
    public final void a(String var1, boolean var2, int var3) {
       byte var8 = 1;
       var2 = true;
-      var1 = var1;
+      if (title && "menu".equals(var1)) {
+         var1 = "title";
+      }
       if (!this.c.equals(var1)) {
          this.a();
          this.b(var1, var2, var8);
@@ -35,8 +39,9 @@ public final class f {
    public final void b(String var1, boolean var2, int var3) {
       try {
          InputStream var5;
-         if ((var5 = compat.Res.open("/" + var1 + ".mid")) != null) {
-            this.a = Manager.createPlayer(var5, this.b[var3]);
+         boolean mp3 = "title".equals(var1);
+         if ((var5 = compat.Res.open("/" + var1 + (mp3 ? ".mp3" : ".mid"))) != null) {
+            this.a = Manager.createPlayer(var5, mp3 ? "audio/mpeg" : this.b[var3]);
             this.a.realize();
             if (var2) {
                this.a.setLoopCount(-1);
