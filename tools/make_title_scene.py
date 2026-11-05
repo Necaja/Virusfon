@@ -8,6 +8,7 @@
 Облако, свечение и логотип делает прежний tools/make_title_assets.py.
 """
 import math, random, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -466,6 +467,11 @@ CENTER_X = 10 + 36 * Z   # середина пары в кадре
 
 
 def make_couple():
+    import make_campfire
+    return make_campfire.make_couple(OUT, hill_y, 628)[:2]
+
+
+def make_couple_old():
     strip = Image.new("RGBA", (FW * NF, FH), (0, 0, 0, 0))
     for i in range(NF):
         strip.alpha_composite(couple_frame(i), (i * FW, 0))
@@ -484,5 +490,5 @@ if __name__ == "__main__":
         bg = Image.open(os.path.join(OUT, "title_bg.png")).convert("RGBA")
         tr = Image.open(os.path.join(OUT, "title_tree.png"))
         bg.alpha_composite(tr, (tx, ty))
-        bg.alpha_composite(couple_frame(3), (cx, cy))
+        bg.alpha_composite(Image.open(os.path.join(OUT, "title_couple.png")).crop((3 * 150, 0, 4 * 150, 84)), (cx, cy))
         bg.save(sys.argv[3])
