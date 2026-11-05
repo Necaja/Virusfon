@@ -4,6 +4,7 @@ public class Run {
   static void key(int c, int hold) throws Exception { Display.key(true,c); Thread.sleep(hold); Display.key(false,c); Thread.sleep(150); }
   static boolean panoDone; static java.util.Set<String> fired=new java.util.HashSet<>(); static boolean jumped; static void setInt(Class<?> c,String n,int v) throws Exception { java.lang.reflect.Field f=c.getDeclaredField(n); f.setAccessible(true); f.setInt(null,v);}
   static void dump(String name) throws Exception {
+    if (Graphics.LAYER!=null) { java.awt.Graphics2D lg=Graphics.LAYER.createGraphics(); lg.setComposite(java.awt.AlphaComposite.Clear); lg.fillRect(0,0,1200,320); lg.dispose(); Thread.sleep(45); javax.imageio.ImageIO.write(Graphics.LAYER, "png", new java.io.File(System.getProperty("java.io.tmpdir")+"/frames/"+name+"_spr.png")); }
     java.lang.reflect.Field f = Display.class.getDeclaredField("back"); f.setAccessible(true);
     java.lang.reflect.Field lf = Display.class.getDeclaredField("lock"); lf.setAccessible(true); java.util.concurrent.locks.ReentrantLock lk=(java.util.concurrent.locks.ReentrantLock) lf.get(null); lk.lock(); try { Image im = (Image) f.get(null); if (im==null) return; javax.imageio.ImageIO.write(im.bi, "png", new java.io.File(System.getProperty("java.io.tmpdir")+"/frames/"+name+".png")); } finally { lk.unlock(); } if(true) return; Image im=null;
     javax.imageio.ImageIO.write(im.bi, "png", new java.io.File(System.getProperty("java.io.tmpdir")+"/frames/"+name+".png"));

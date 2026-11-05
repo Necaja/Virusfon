@@ -18,10 +18,10 @@ public final class TitleScene {
    private static final int[][] WINS = {
       {5, 203, 12, 9}, {63, 201, 10, 8}, {111, 201, 9, 7}, {156, 199, 11, 8}, {206, 207, 8, 6}, {253, 209, 8, 6}, {310, 213, 7, 5}, {369, 217, 6, 5}
    };
-   private static final int TREE_X = 596 + BG_X, TREE_Y = 109;
-   private static final int COUPLE_X = 555 + BG_X, COUPLE_Y = 181;
+   private static final int TREE_X = 466 + BG_X, TREE_Y = 0;
+   private static final int COUPLE_X = 472 + BG_X, COUPLE_Y = 138;
    private static final int SUN_X = 190 + BG_X, SUN_Y = 176;
-   private static final int FW = 150, FH = 84, FRAMES = 12;
+   private static final int FW = 168, FH = 132, FRAMES = 12;
    private static final int[] PETAL_COL = {0xC83A76, 0xE8508A, 0xFF7FAE, 0xFFB4CF};
 
    private static Image bg, tree, couple, cloud, glow, logo;
@@ -65,8 +65,8 @@ public final class TitleScene {
       fSel = Font.getFont(64, 1, 16);
       java.util.Random r = new java.util.Random(3);
       for (int i = 0; i < NP; i++) {
-         px[i] = TREE_X + 10 + r.nextFloat() * 120;
-         py[i] = TREE_Y + 5 + r.nextFloat() * 60;
+         px[i] = TREE_X + 30 + r.nextFloat() * 190;
+         py[i] = TREE_Y + 20 + r.nextFloat() * 110;
          pv[i] = 10 + r.nextFloat() * 12;
          psw[i] = 8 + r.nextFloat() * 18;
          pph[i] = r.nextFloat() * 6.3f;

@@ -48,12 +48,12 @@ def smooth(x):
 # ---------------------------------------------------------------- рельеф переднего плана (возвышенность)
 def hill_y(x):
     """Верхняя кромка горы, на которой стоят герои: слева склон уходит вниз, справа вершина."""
-    base = 304 - 52 * smooth((x - 30) / 560)
+    base = 304 - 52 * smooth((x - 30) / 420)
     return base + 2.5 * math.sin(x * 0.045) + 1.5 * math.sin(x * 0.13 + 1)
 
 
 COUPLE_X = 536           # центр пары (координата фона)
-TREE_X = 664             # центр ствола дерева
+TREE_X = 588
 
 
 # ---------------------------------------------------------------- настоящие дома и дерево из панорамы
@@ -258,6 +258,8 @@ def make_scene():
     bb = tree.getbbox()
     tree = tree.crop(bb)
     tree = dusk_grade(tree, 0.0)
+    TS = 1.8   # дерево в масштабе героев (они x2)
+    tree = tree.resize((int(tree.width * TS), int(tree.height * TS)), Image.NEAREST)
     tree.save(os.path.join(OUT, "title_tree.png"), optimize=True)
     # центр ствола: самый широкий ряд пикселей коры в нижней трети
     ta2 = np.array(tree)
@@ -468,7 +470,7 @@ CENTER_X = 10 + 36 * Z   # середина пары в кадре
 
 def make_couple():
     import make_campfire
-    return make_campfire.make_couple(OUT, hill_y, 628)[:2]
+    return make_campfire.make_couple(OUT, hill_y, 560)[:2]
 
 
 def make_couple_old():
@@ -490,5 +492,5 @@ if __name__ == "__main__":
         bg = Image.open(os.path.join(OUT, "title_bg.png")).convert("RGBA")
         tr = Image.open(os.path.join(OUT, "title_tree.png"))
         bg.alpha_composite(tr, (tx, ty))
-        bg.alpha_composite(Image.open(os.path.join(OUT, "title_couple.png")).crop((3 * 150, 0, 4 * 150, 84)), (cx, cy))
+        bg.alpha_composite(Image.open(os.path.join(OUT, "title_couple.png")).crop((3 * 168, 0, 4 * 168, 132)), (cx, cy))
         bg.save(sys.argv[3])
