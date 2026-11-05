@@ -14,13 +14,14 @@ import javax.microedition.lcdui.Image;
 public final class TitleScene {
    // фон 720x320; логическая x = x фона - 240 (центр колонки 240 — середина фона)
    private static final int BG_X = -240;
-   // хижины фона (центр x, ширина, высота) — для мерцающих окон; совпадает с генератором
-   private static final int[][] HUTS = {
-      {30, 40, 38}, {92, 34, 30}, {150, 28, 26}, {226, 30, 30}, {300, 30, 28}, {352, 36, 34},
-      {418, 30, 26}, {478, 40, 36}, {545, 34, 30}, {610, 36, 32}, {676, 30, 28}
+   // светящиеся окна дальних домов в координатах фона (x, y, w, h) — из tools/make_title_scene.py
+   private static final int[][] WINS = {
+      {5, 203, 12, 9}, {63, 201, 10, 8}, {111, 201, 9, 7}, {156, 199, 11, 8}, {206, 207, 8, 6}, {253, 209, 8, 6}, {310, 213, 7, 5}, {369, 217, 6, 5}
    };
+   private static final int TREE_X = 596 + BG_X, TREE_Y = 109;
+   private static final int COUPLE_X = 472 + BG_X, COUPLE_Y = 166;
    private static final int SUN_X = 190 + BG_X, SUN_Y = 176;
-   private static final int FW = 104, FH = 92, FRAMES = 12;
+   private static final int FW = 112, FH = 104, FRAMES = 12;
    private static final int[] PETAL_COL = {0xC83A76, 0xE8508A, 0xFF7FAE, 0xFFB4CF};
 
    private static Image bg, tree, couple, cloud, glow, logo;
@@ -64,12 +65,12 @@ public final class TitleScene {
       fSel = Font.getFont(64, 1, 16);
       java.util.Random r = new java.util.Random(3);
       for (int i = 0; i < NP; i++) {
-         px[i] = 300 + r.nextFloat() * 140;
-         py[i] = 110 + r.nextFloat() * 80;
+         px[i] = TREE_X + 10 + r.nextFloat() * 120;
+         py[i] = TREE_Y + 5 + r.nextFloat() * 60;
          pv[i] = 10 + r.nextFloat() * 12;
          psw[i] = 8 + r.nextFloat() * 18;
          pph[i] = r.nextFloat() * 6.3f;
-         pdr[i] = -9 + r.nextFloat() * 13;
+         pdr[i] = -7 + r.nextFloat() * 14;
          plife[i] = 10 + r.nextFloat() * 4;
          psz[i] = new int[] {1, 2, 2, 3}[r.nextInt(4)];
          pcol[i] = PETAL_COL[r.nextInt(4)];
@@ -106,43 +107,41 @@ public final class TitleScene {
       // фон: небо, солнце, горы, озеро, хижины, земля
       g.drawImage(bg, BG_X, 0, 20);
       // облака
-      cloudAt(g, t, 38, 2.4f, 0);
-      cloudAt(g, t, 72, 1.5f, 330);
-      cloudAt(g, t, 104, 1.0f, 620);
       // свечение солнца (3 кадра пульсации)
       int gf = (int) ((Math.sin(t * 1.3) + 1) * 1.49);
       clipDraw(g, glow, SUN_X - 100, SUN_Y - 100, gf * 200, 200, 200);
       // дорожка солнца на воде
       java.util.Random rr = new java.util.Random((long) (t * 6));
-      for (int y = 206; y < 262; y += 2) {
-         float v = (y - 205) / 57f;
-         int w = (int) (6 + 20 * v + rr.nextFloat() * 8 - 4);
+      for (int y = 208; y < 238; y += 2) {
+         float v = (y - 208) / 30f;
+         int w = (int) (5 + 14 * v + rr.nextFloat() * 6 - 3);
          int a = (int) (200 * (1 - v * 0.7f));
          g.fillRectArgb(SUN_X - w, y, w * 2, 1, (a << 24) | 0xFFE296);
       }
       for (int i = 0; i < 36; i++) {
          java.util.Random q = new java.util.Random(i * 31L);
          float x = q.nextFloat() * 720 - 240;
-         float y = 208 + q.nextFloat() * 50;
+         float y = 208 + q.nextFloat() * 28;
          float ph = (t * 0.8f + q.nextFloat() * 6) % 3;
          if (ph < 1f) {
             int ln = (int) (4 + 6 * ph);
             g.fillRectArgb((int) x - ln, (int) y, ln * 2, 1, ((int) (120 * (1 - ph)) << 24) | 0xFFDCAA);
          }
       }
-      // мерцающие окна хижин
-      for (int i = 0; i < HUTS.length; i++) {
-         double tw = 0.6 + 0.4 * Math.sin(t * 2.2 + i * 1.7);
-         int c = (255 << 16) | ((int) (190 * tw + 40) << 8) | (int) (90 * tw);
-         g.setColor(c);
-         int x = HUTS[i][0] + BG_X, h = HUTS[i][2];
-         g.fillRect(x - 3, 233 - (int) (h * 0.32), 6, (int) (h * 0.14));
+      // мерцающие окна
+      for (int i = 0; i < WINS.length; i++) {
+         float fl = 0.5f + 0.5f * (float) Math.sin(t * (1.1f + i * 0.37f) + i * 2.1f);
+         int a = (int) (40 + 90 * fl);
+         int[] w = WINS[i];
+         g.fillRectArgb(w[0] + BG_X, w[1], w[2], w[3], (a << 24) | 0xFFD070);
       }
       // лепестки позади, дерево, пара
       petals(g, t, false);
-      g.drawImage(tree, 386 - 88 + 0, 120, 20);
+      if (tree != null) {
+         g.drawImage(tree, TREE_X, TREE_Y, 20);
+      }
       int f = ((int) (t * 8)) % FRAMES;
-      clipDraw(g, couple, 254, 217, f * FW, FW, FH);
+      clipDraw(g, couple, COUPLE_X, COUPLE_Y, f * FW, FW, FH);
       petals(g, t, true);
 
       // боковые поля чуть темнее, как у остальных экранов
@@ -188,7 +187,7 @@ public final class TitleScene {
          float tt = (t + pph[i] * 3) % plife[i];
          float y = py[i] + pv[i] * tt;
          float x = px[i] + pdr[i] * tt + (float) Math.sin(tt * 1.7 + pph[i]) * psw[i] * 0.5f + (float) Math.sin(tt * 0.6) * 12;
-         if (y > 296 || y < 0) {
+         if (y > 256 || y < 0) {
             continue;
          }
          float flip = (float) Math.sin(tt * 4 + pph[i]);
