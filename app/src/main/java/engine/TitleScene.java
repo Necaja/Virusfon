@@ -110,24 +110,6 @@ public final class TitleScene {
       // свечение солнца (3 кадра пульсации)
       int gf = (int) ((Math.sin(t * 1.3) + 1) * 1.49);
       clipDraw(g, glow, SUN_X - 100, SUN_Y - 100, gf * 200, 200, 200);
-      // дорожка солнца на воде
-      java.util.Random rr = new java.util.Random((long) (t * 6));
-      for (int y = 208; y < 238; y += 2) {
-         float v = (y - 208) / 30f;
-         int w = (int) (5 + 14 * v + rr.nextFloat() * 6 - 3);
-         int a = (int) (200 * (1 - v * 0.7f));
-         g.fillRectArgb(SUN_X - w, y, w * 2, 1, (a << 24) | 0xFFE296);
-      }
-      for (int i = 0; i < 36; i++) {
-         java.util.Random q = new java.util.Random(i * 31L);
-         float x = q.nextFloat() * 720 - 240;
-         float y = 208 + q.nextFloat() * 28;
-         float ph = (t * 0.8f + q.nextFloat() * 6) % 3;
-         if (ph < 1f) {
-            int ln = (int) (4 + 6 * ph);
-            g.fillRectArgb((int) x - ln, (int) y, ln * 2, 1, ((int) (120 * (1 - ph)) << 24) | 0xFFDCAA);
-         }
-      }
       // мерцающие окна
       for (int i = 0; i < WINS.length; i++) {
          float fl = 0.5f + 0.5f * (float) Math.sin(t * (1.1f + i * 0.37f) + i * 2.1f);
@@ -144,9 +126,6 @@ public final class TitleScene {
       clipDraw(g, couple, COUPLE_X, COUPLE_Y, f * FW, FW, FH);
       petals(g, t, true);
 
-      // боковые поля чуть темнее, как у остальных экранов
-      g.fillRectArgb(-ex, 0, ex, 320, 0x46050314);
-      g.fillRectArgb(240, 0, ex, 320, 0x46050314);
 
       logo(g, t);
       scroll(g, t, items, sel, now);
