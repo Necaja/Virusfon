@@ -250,7 +250,7 @@ def hero(img, i, talk):
         dr.rectangle([14, GROUND - 3, 23, GROUND - 1], fill=(0x8c, 0x20, 0x36, 255))
         dr.rectangle([11, GROUND - 10, 11, GROUND - 1], fill=(0x1f, 0x1c, 0x2e, 255))
         dr.line([(11, GROUND), (23, GROUND)], fill=(0x1f, 0x1c, 0x2e, 255))
-        img.alpha_composite(up, (3, GROUND - 12 - 28 + (1 if (talk and i % 2) else 0)))
+        img.alpha_composite(up, (3, GROUND - 12 - 28))
         return
     if MODE == "game":
         img.alpha_composite(HERO_G, (3, GROUND - HERO_G.height + 7))
@@ -265,7 +265,7 @@ def atlantida(img, i, talk):
         lg = ATL.crop((0, 20, 7, 31)).rotate(-90, expand=True)   # ноги подогнуты в невидимую сторону — видны только голени у края платья
         img.alpha_composite(lg, (x0 - 3, GROUND - 9))
         img.alpha_composite(lg, (x0 - 5, GROUND - 6))
-        img.alpha_composite(up, (x0, GROUND - 36 + (1 if (not talk and i % 2) else 0)))
+        img.alpha_composite(up, (x0, GROUND - 36))
         return
     if MODE == "game":
         img.alpha_composite(ATL_G, (NW - ATL_G.width - 3, GROUND - ATL_G.height + 1))
@@ -321,11 +321,31 @@ def firelight(img, i):
                 px[x, y] = tuple(min(255, int(c[j] * (1 - k) + [255, 190, 100][j] * k)) for j in range(3)) + (255,)
 
 
+def wind(img, box, phase, a0, a1, lag=0.45):
+    """Лёгкий ветер: строки области сдвигаются по синусоиде (к низу/краю сильнее). Оригинал остаётся под сдвинутым — дыр не бывает."""
+    x0, y0, x1, y1 = box
+    base = img.copy()
+    for y in range(y0, y1):
+        t = (y - y0) / max(1, y1 - y0 - 1)
+        d = round((a0 + (a1 - a0) * t) * math.sin(phase + (y - y0) * lag))
+        if d == 0:
+            continue
+        seg = base.crop((x0, y, x1, y + 1))
+        img.alpha_composite(seg, (x0 + d, y))
+
+
 def frame(i):
     nat = Image.new("RGBA", (NW, NH), (0, 0, 0, 0))
     talk_h = i < 6
     hero(nat, i, talk_h)
     atlantida(nat, i, not talk_h)
+    ph = i / NF * math.tau
+    if MODE == "sitgame":
+        top_h, top_a = GROUND - 40, GROUND - 36
+        wind(nat, (1, top_h, 13, top_h + 17), ph, 0.3, 1.8)              # хвост и волосы Вирусфона
+        wind(nat, (1, top_h + 15, 12, top_h + 30), ph + 1.0, 0.4, 1.0, 0.6)  # рукав/шарф
+        wind(nat, (NW - 14, top_a, NW + 4, top_a + 20), ph + 0.7, 0.3, 2.0)  # волосы Атлантиды
+        wind(nat, (NW - 24, top_a + 27, NW - 3, top_a + 36), ph + 0.3, 0.4, 1.1, 0.8)  # подол платья
     firelight(nat, i)
     fire(nat, i)
     big = nat.resize((FW, FH), Image.NEAREST)
