@@ -259,7 +259,8 @@ def make_scene():
     tree = tree.crop(bb)
     tree = dusk_grade(tree, 0.0)
     TS = 1.8   # дерево в масштабе героев (они x2)
-    tree = tree.resize((int(tree.width * TS), int(tree.height * TS)), Image.NEAREST)
+    import make_campfire
+    tree = make_campfire.epx2(tree).resize((int(tree.width * TS), int(tree.height * TS)), Image.BILINEAR)
     tree.save(os.path.join(OUT, "title_tree.png"), optimize=True)
     # центр ствола: самый широкий ряд пикселей коры в нижней трети
     ta2 = np.array(tree)

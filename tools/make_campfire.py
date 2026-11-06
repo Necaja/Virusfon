@@ -2,6 +2,7 @@
 Детали вырезаются из атласов, поворачиваются/отражаются и ставятся в позу «сидят у костра». Рисуется в родном
 разрешении игры и увеличивается x2 без сглаживания, потому что остальная графика меню тоже пиксельная."""
 import math, os
+import numpy as np
 from PIL import Image, ImageDraw
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "assets")
@@ -334,6 +335,26 @@ def wind(img, box, phase, a0, a1, lag=0.45):
         img.alpha_composite(seg, (x0 + d, y))
 
 
+def epx2(img):
+    """Scale2x/EPX: увеличение вдвое со сглаживанием диагоналей (как игра сглаживает свои спрайты); игра потом ещё раз сглаживает при выводе."""
+    a = np.array(img.convert("RGBA")).astype(np.uint32)
+    k = (a[:, :, 0] << 24) | (a[:, :, 1] << 16) | (a[:, :, 2] << 8) | a[:, :, 3]
+    k = np.where(a[:, :, 3] == 0, 0, k)
+    pad = np.pad(k, 1, mode="edge")
+    A, D = pad[:-2, 1:-1], pad[2:, 1:-1]
+    C, B = pad[1:-1, :-2], pad[1:-1, 2:]
+    P = k
+    o1 = np.where((C == A) & (C != D) & (A != B), A, P)
+    o2 = np.where((A == B) & (A != C) & (B != D), B, P)
+    o3 = np.where((D == C) & (D != B) & (C != A), C, P)
+    o4 = np.where((B == D) & (B != A) & (D != C), D, P)
+    h, w = k.shape
+    out = np.zeros((h * 2, w * 2), dtype=np.uint32)
+    out[0::2, 0::2], out[0::2, 1::2], out[1::2, 0::2], out[1::2, 1::2] = o1, o2, o3, o4
+    rgba = np.stack([(out >> 24) & 255, (out >> 16) & 255, (out >> 8) & 255, out & 255], axis=-1).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
+
+
 def frame(i):
     nat = Image.new("RGBA", (NW, NH), (0, 0, 0, 0))
     talk_h = i < 6
@@ -348,7 +369,7 @@ def frame(i):
         wind(nat, (NW - 24, top_a + 27, NW - 3, top_a + 36), ph + 0.3, 0.4, 1.1, 0.8)  # подол платья
     firelight(nat, i)
     fire(nat, i)
-    big = nat.resize((FW, FH), Image.NEAREST)
+    big = epx2(nat)
     out = glow(i)
     out.alpha_composite(big)
     return out, nat

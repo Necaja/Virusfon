@@ -310,7 +310,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    /** Кадр прямо на экран на видеокарте: команды рисования проигрываются на аппаратном Canvas с матрицей масштаба. */
    @Override
    public boolean presentReplay(float alpha) {
-      if (!surfaceReady || hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
+      if (!surfaceReady) {
+         return false; // поверхность ещё не создана (старт): режим видеокарты не сбрасываем, кадр придёт позже
+      }
+      if (hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
          Display.gpu = false;
          gpuDrawn = false;
          return false;
@@ -371,7 +374,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Dis
    /** Готовый растровый кадр (меню/заставки) через видеокарту: Scale2x на процессоре один раз на кадр, вывод и масштаб - аппаратные. */
    @Override
    public boolean presentBitmapGpu(Image frame) {
-      if (!surfaceReady || hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
+      if (!surfaceReady) {
+         return false; // поверхность ещё не создана (старт): режим видеокарты не сбрасываем, кадр придёт позже
+      }
+      if (hwFailed || android.os.Build.VERSION.SDK_INT < 26) {
          Display.gpu = false;
          gpuDrawn = false;
          return false;
