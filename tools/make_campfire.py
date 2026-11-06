@@ -378,8 +378,8 @@ def frame(i):
     if MODE == "sitgame":
         top_h, top_a = GROUND - 40, GROUND - 36
         g = gust(ph)
-        wind(nat, (0, top_h, 13, top_h + 19), "r", g, 1.0, 3.4, 0.25, ph)              # хвост и волосы Вирусфона
-        wind(nat, (1, top_h + 15, 12, top_h + 30), "r", gust(ph, 0.4), 0.4, 1.6)        # рукав/шарф
+        wind(nat, (0, top_h, 14, top_h + 22), "r", g, 2.0, 7.0, 0.8, ph)              # хвост и волосы Вирусфона
+        wind(nat, (1, top_h + 15, 12, top_h + 32), "r", gust(ph, 0.4), 0.5, 1.8, 0.2, ph)        # рукав/шарф
         wind(nat, (NW - 17, top_a + 1, NW, top_a + 19), "l", gust(ph, 0.3), 0.8, 2.4, 0.2, ph + 1)  # волосы Атлантиды
         wind(nat, (NW - 24, top_a + 27, NW - 3, top_a + 36), "y", gust(ph, 0.2), 0.3, 1.4)  # подол платья
     firelight(nat, i)
