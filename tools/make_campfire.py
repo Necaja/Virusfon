@@ -322,17 +322,31 @@ def firelight(img, i):
                 px[x, y] = tuple(min(255, int(c[j] * (1 - k) + [255, 190, 100][j] * k)) for j in range(3)) + (255,)
 
 
-def wind(img, box, phase, a0, a1, lag=0.45):
-    """Лёгкий ветер: строки области сдвигаются по синусоиде (к низу/краю сильнее). Оригинал остаётся под сдвинутым — дыр не бывает."""
+def gust(ph, k=0.0):
+    """Порыв ветра 0..1: плавное нарастание/спад + лёгкая рябь."""
+    return max(0.0, min(1.0, 0.5 + 0.42 * math.sin(ph + k) + 0.12 * math.sin(2 * ph + 1.3 + k)))
+
+
+def wind(img, box, anchor, g, a0, a1, flutter=0.0, ph=0.0):
+    """Ветер дует влево. Область тянется от закреплённой стороны (anchor: 'r' или 'l' — у головы/плеча, 'y' — сверху)
+    к свободному концу: тот смещается влево на a*g пикселей, у основания смещения нет. Без дублей под сдвигом."""
     x0, y0, x1, y1 = box
     base = img.copy()
+    bp = base.load()
+    op = img.load()
     for y in range(y0, y1):
         t = (y - y0) / max(1, y1 - y0 - 1)
-        d = round((a0 + (a1 - a0) * t) * math.sin(phase + (y - y0) * lag))
-        if d == 0:
-            continue
-        seg = base.crop((x0, y, x1, y + 1))
-        img.alpha_composite(seg, (x0 + d, y))
+        amp = a0 + (a1 - a0) * t
+        d = amp * g + flutter * math.sin(ph * 2 + y * 0.55)
+        for x in range(x0, x1):
+            if anchor == "r":
+                w = (x1 - 1 - x) / max(1, x1 - 1 - x0)
+            elif anchor == "l":
+                w = (x - x0) / max(1, x1 - 1 - x0)
+            else:
+                w = t
+            sx = x + int(round(d * w))
+            op[x, y] = bp[sx, y] if x0 <= sx < x1 else (0, 0, 0, 0)
 
 
 def epx2(img):
@@ -363,10 +377,11 @@ def frame(i):
     ph = i / NF * math.tau
     if MODE == "sitgame":
         top_h, top_a = GROUND - 40, GROUND - 36
-        wind(nat, (1, top_h, 13, top_h + 17), ph, 0.3, 1.8)              # хвост и волосы Вирусфона
-        wind(nat, (1, top_h + 15, 12, top_h + 30), ph + 1.0, 0.4, 1.0, 0.6)  # рукав/шарф
-        wind(nat, (NW - 14, top_a, NW + 4, top_a + 20), ph + 0.7, 0.3, 2.0)  # волосы Атлантиды
-        wind(nat, (NW - 24, top_a + 27, NW - 3, top_a + 36), ph + 0.3, 0.4, 1.1, 0.8)  # подол платья
+        g = gust(ph)
+        wind(nat, (0, top_h, 13, top_h + 19), "r", g, 1.0, 3.4, 0.25, ph)              # хвост и волосы Вирусфона
+        wind(nat, (1, top_h + 15, 12, top_h + 30), "r", gust(ph, 0.4), 0.4, 1.6)        # рукав/шарф
+        wind(nat, (NW - 17, top_a + 1, NW, top_a + 19), "l", gust(ph, 0.3), 0.8, 2.4, 0.2, ph + 1)  # волосы Атлантиды
+        wind(nat, (NW - 24, top_a + 27, NW - 3, top_a + 36), "y", gust(ph, 0.2), 0.3, 1.4)  # подол платья
     firelight(nat, i)
     fire(nat, i)
     big = epx2(nat)
